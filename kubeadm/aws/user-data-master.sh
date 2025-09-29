@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Download and run shared scripts
-curl -fsSL https://raw.githubusercontent.com/your-repo/kubeadm/main/scripts/install-k8s-common.sh | bash
+curl -fsSL https://raw.githubusercontent.com/jeffellin/terraform-kubeadm/main/kubeadm/shared/install-k8s-common.sh | bash
 
 # Run master initialization
-curl -fsSL https://raw.githubusercontent.com/your-repo/kubeadm/main/scripts/init-k8s-master.sh | bash -s -- "${master_ip}" "${cluster_name}"
+curl -fsSL https://raw.githubusercontent.com/jeffellin/terraform-kubeadm/main/kubeadm/shared/init-k8s-master.sh | bash -s -- "${master_ip}" "${cluster_name}"
 
 # Create a simple script to retrieve the join command
 cat > /home/ubuntu/get-join-command.sh <<EOF

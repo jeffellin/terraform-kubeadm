@@ -30,10 +30,22 @@ variable "template_name" {
   type        = string
 }
 
+variable "template_id" {
+  description = "VM ID of the Ubuntu cloud-init template to clone from"
+  type        = number
+  default     = 9000
+}
+
 variable "storage_pool" {
   description = "Proxmox storage pool name"
   type        = string
-  default     = "local-lvm"
+  default     = "SSD_2TB_1"
+}
+
+variable "snippets_storage" {
+  description = "Proxmox storage for snippets (must support snippets content type)"
+  type        = string
+  default     = "local"
 }
 
 variable "network_bridge" {
