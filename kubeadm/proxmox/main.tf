@@ -74,21 +74,12 @@ resource "proxmox_virtual_environment_file" "master_cloud_init" {
   node_name    = var.proxmox_node
 
   source_raw {
-    data = <<-EOF
-    #cloud-config
-    package_upgrade: true
-    packages:
-      - qemu-guest-agent
-    ssh_pwauth: true
-    chpasswd:
-      expire: false
-    runcmd:
-      - systemctl enable qemu-guest-agent
-      - systemctl start qemu-guest-agent
-      - curl -fsSL https://raw.githubusercontent.com/jeffellin/terraform-kubeadm/main/kubeadm/shared/install-k8s-common.sh | bash
-      - sleep 30
-      - curl -fsSL https://raw.githubusercontent.com/jeffellin/terraform-kubeadm/main/kubeadm/shared/init-k8s-master.sh | bash -s -- 192.168.1.200 k8s-cluster
-    EOF
+    data = templatefile("${path.module}/master-cloud-init.yaml.tftpl", {
+      hostname = "k8s-master"
+      ssh_public_key = var.ssh_public_key
+      cluster_ssh_key = file("${path.module}/cluster-ssh-key.pub")
+      cluster_ssh_private_key = file("${path.module}/cluster-ssh-key")
+    })
 
     file_name = "master-cloud-init.yaml"
   }
@@ -155,22 +146,13 @@ resource "proxmox_virtual_environment_file" "worker_cloud_init" {
   node_name    = var.proxmox_node
 
   source_raw {
-    data = <<-EOF
-    #cloud-config
-    package_upgrade: true
-    packages:
-      - qemu-guest-agent
-    ssh_pwauth: true
-    chpasswd:
-      expire: false
-    runcmd:
-      - systemctl enable qemu-guest-agent
-      - systemctl start qemu-guest-agent
-      - curl -fsSL https://raw.githubusercontent.com/jeffellin/terraform-kubeadm/main/kubeadm/shared/install-k8s-common.sh | bash
-      - sleep 120
-      - curl -fsSL https://raw.githubusercontent.com/jeffellin/terraform-kubeadm/main/kubeadm/shared/join-k8s-worker.sh | bash -s -- 192.168.1.200
-    EOF
+    data = templatefile("${path.module}/worker-cloud-init.yaml.tftpl", {
+      hostname = "k8s-worker-${count.index + 1}"
+      ssh_public_key = var.ssh_public_key
+      cluster_ssh_key = file("${path.module}/cluster-ssh-key.pub")
+      cluster_ssh_private_key = file("${path.module}/cluster-ssh-key")
+    })
 
-    file_name = "worker-cloud-init.yaml"
+    file_name = "worker-cloud-init-${count.index + 1}.yaml"
   }
 }

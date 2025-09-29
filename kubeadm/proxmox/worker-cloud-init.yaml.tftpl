@@ -1,0 +1,25 @@
+#cloud-config
+hostname: ${hostname}
+fqdn: ${hostname}
+manage_etc_hosts: true
+package_upgrade: true
+packages:
+  - qemu-guest-agent
+ssh_pwauth: true
+chpasswd:
+  expire: false
+ssh_authorized_keys:
+  - ${ssh_public_key}
+  - ${cluster_ssh_key}
+write_files:
+  - path: /home/ubuntu/.ssh/id_ed25519
+    owner: ubuntu:ubuntu
+    permissions: '0600'
+    content: |
+      ${indent(6, cluster_ssh_private_key)}
+runcmd:
+  - systemctl enable qemu-guest-agent
+  - systemctl start qemu-guest-agent
+  - curl -fsSL https://raw.githubusercontent.com/jeffellin/terraform-kubeadm/main/kubeadm/shared/install-k8s-common.sh | bash
+  - sleep 120
+  - curl -fsSL https://raw.githubusercontent.com/jeffellin/terraform-kubeadm/main/kubeadm/shared/join-k8s-worker.sh | bash -s -- 192.168.1.200
