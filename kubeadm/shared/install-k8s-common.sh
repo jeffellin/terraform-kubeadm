@@ -18,20 +18,13 @@ sudo usermod -aG docker ubuntu
 sudo systemctl enable docker
 sudo systemctl start docker
 
-# Configure Docker daemon for Kubernetes
-sudo tee /etc/docker/daemon.json > /dev/null <<EOF
-{
-  "exec-opts": ["native.cgroupdriver=systemd"],
-  "log-driver": "json-file",
-  "log-opts": {
-    "max-size": "100m"
-  },
-  "storage-driver": "overlay2"
-}
-EOF
+# Configure containerd for Kubernetes
+sudo mkdir -p /etc/containerd
+sudo containerd config default | sudo tee /etc/containerd/config.toml > /dev/null
+sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
 
-sudo systemctl daemon-reload
-sudo systemctl restart docker
+sudo systemctl restart containerd
+sudo systemctl enable containerd
 
 # Install Kubernetes components using new repository
 sudo mkdir -p /etc/apt/keyrings
