@@ -1,0 +1,21 @@
+# Proxmox Configuration
+proxmox_host     = "https://your-proxmox-host:8006/api2/json"
+proxmox_username = "root@pam"
+proxmox_password = "your-proxmox-password"
+proxmox_node     = "pve"
+
+# Ubuntu ISO and Template
+ubuntu_iso_path = "local:iso/ubuntu-22.04.3-live-server-amd64.iso"
+template_name   = "ubuntu-22.04-template"
+
+# Storage and Network
+storage_pool   = "local-lvm"
+network_bridge = "vmbr0"
+
+# VM Configuration
+vm_password    = "your-vm-password"
+ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAA... your-public-key"
+
+# Network Configuration
+# IP addresses, gateway, and DNS will be assigned via DHCP
+# Ensure your DHCP server has reservations configured if you need specific IPs

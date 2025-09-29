@@ -1,0 +1,57 @@
+# Terraform files
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfplan.*
+.terraform/
+.terraform.lock.hcl
+
+# Terraform variable files containing sensitive data
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+
+# SSH keys
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+*.pub
+
+# Kubernetes config files
+kubeconfig*
+*.kubeconfig
+
+# Logs
+*.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+
+# Credentials and secrets
+secrets/
+credentials/
+.env
+.env.local
+.env.production
+
+# Kubernetes join tokens and certificates
+join-command.sh
+cluster-info.txt
