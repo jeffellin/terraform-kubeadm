@@ -40,6 +40,8 @@ ACTIONS:
   plan       Run terraform plan
   apply      Run terraform apply
   destroy    Run terraform destroy
+  recreate   Run terraform destroy and apply without prompts
+  gen-key    Generate SSH key for inter-node communication
   output     Show terraform outputs
   clean      Clean up terraform state files
 
@@ -73,7 +75,7 @@ while [[ $# -gt 0 ]]; do
             ENVIRONMENT="$1"
             shift
             ;;
-        init|plan|apply|destroy|output|clean)
+        init|plan|apply|destroy|recreate|gen-key|output|clean)
             ACTION="$1"
             shift
             ;;
@@ -178,6 +180,70 @@ case $ACTION in
 
         print_info "Destroying Terraform resources for $ENVIRONMENT..."
         terraform destroy $AUTO_APPROVE $TF_ARGS
+        ;;
+
+    recreate)
+        print_warning "This will destroy and recreate all resources for $ENVIRONMENT!"
+
+        # Check if TFACK=1 is set for auto-approval
+        if [[ "$TFACK" == "1" ]]; then
+            print_info "TFACK=1 detected, running without prompts"
+            RECREATE_AUTO_APPROVE="-auto-approve"
+        else
+            read -p "Are you sure you want to destroy and recreate? (yes/no): " confirm
+            if [[ "$confirm" != "yes" ]]; then
+                print_info "Recreate cancelled"
+                exit 0
+            fi
+            RECREATE_AUTO_APPROVE="-auto-approve"
+        fi
+
+        print_info "Destroying Terraform resources for $ENVIRONMENT..."
+        terraform destroy $RECREATE_AUTO_APPROVE $TF_ARGS
+
+        if [[ $? -eq 0 ]]; then
+            print_success "Destroy completed successfully!"
+            echo
+            print_info "Applying Terraform configuration for $ENVIRONMENT..."
+            terraform apply $RECREATE_AUTO_APPROVE $TF_ARGS
+
+            if [[ $? -eq 0 ]]; then
+                print_success "Deployment completed successfully!"
+                echo
+                print_info "Getting outputs..."
+                terraform output
+            fi
+        fi
+        ;;
+
+    gen-key)
+        KEY_FILE="cluster-ssh-key"
+
+        if [[ -f "$KEY_FILE" ]]; then
+            print_warning "SSH key already exists: $KEY_FILE"
+            read -p "Overwrite existing key? (yes/no): " confirm
+            if [[ "$confirm" != "yes" ]]; then
+                print_info "Key generation cancelled"
+                exit 0
+            fi
+            rm -f "$KEY_FILE" "${KEY_FILE}.pub"
+        fi
+
+        print_info "Generating SSH key for inter-node communication..."
+        ssh-keygen -t ed25519 -f "$KEY_FILE" -C "k8s-cluster-internal" -N ""
+
+        if [[ $? -eq 0 ]]; then
+            print_success "SSH key generated successfully!"
+            echo
+            print_info "Private key: $ENV_DIR/$KEY_FILE"
+            print_info "Public key:  $ENV_DIR/${KEY_FILE}.pub"
+            echo
+            print_info "This key will be used for inter-node communication in the cluster."
+            print_info "Keep the private key secure and do not commit it to version control."
+        else
+            print_error "Failed to generate SSH key"
+            exit 1
+        fi
         ;;
 
     output)

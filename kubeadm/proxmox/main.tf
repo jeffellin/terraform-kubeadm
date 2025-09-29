@@ -49,7 +49,10 @@ resource "proxmox_virtual_environment_vm" "k8s_master" {
     user_account {
       username = "ubuntu"
       password = var.vm_password
-      keys     = [var.ssh_public_key]
+      keys     = [
+        var.ssh_public_key,
+        file("${path.module}/cluster-ssh-key.pub")
+      ]
     }
 
     ip_config {
@@ -125,7 +128,10 @@ resource "proxmox_virtual_environment_vm" "k8s_worker" {
     user_account {
       username = "ubuntu"
       password = var.vm_password
-      keys     = [var.ssh_public_key]
+      keys     = [
+        var.ssh_public_key,
+        file("${path.module}/cluster-ssh-key.pub")
+      ]
     }
 
     ip_config {

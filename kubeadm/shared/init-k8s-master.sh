@@ -21,12 +21,17 @@ sudo kubeadm init \
   --node-name=${CLUSTER_NAME}-master
 
 # Configure kubectl for ubuntu user
-mkdir -p $HOME/.kube
-sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-sudo chown $(id -u):$(id -g) $HOME/.kube/config
+mkdir -p /home/ubuntu/.kube
+sudo cp -i /etc/kubernetes/admin.conf /home/ubuntu/.kube/config
+sudo chown ubuntu:ubuntu /home/ubuntu/.kube/config
 
-# Install Flannel CNI
-kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+# Install Calico CNI
+export KUBECONFIG=/etc/kubernetes/admin.conf
+kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/calico.yaml
+
+# Wait for Calico to be ready
+echo "Waiting for Calico pods to be ready..."
+kubectl wait --for=condition=ready pod -l k8s-app=calico-node -n kube-system --timeout=300s || true
 
 # Generate join command and save it
 sudo kubeadm token create --print-join-command > /tmp/join-command
