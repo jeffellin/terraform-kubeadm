@@ -52,8 +52,8 @@ credentials/
 .env
 .env.local
 .env.production
+infra/secrets/*.yaml
 infra/secrets/aws-credentials
-
 # Kubernetes join tokens and certificates
 join-command.sh
 cluster-info.txt

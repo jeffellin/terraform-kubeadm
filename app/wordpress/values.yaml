@@ -1,0 +1,82 @@
+# Default values for wordpress.
+# This is a YAML-formatted file.
+
+# Number of replicas
+replicaCount: 1
+
+# WordPress image configuration
+image:
+  repository: wordpress
+  tag: "6.2.1-apache"
+  pullPolicy: IfNotPresent
+
+# Image pull secrets (if needed for private registries)
+imagePullSecrets: []
+
+# Name overrides
+nameOverride: ""
+fullnameOverride: ""
+
+# Service account configuration
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # The name of the service account to use
+  name: "wordpress-sa"
+  # Annotations to add to the service account
+  annotations: {}
+  # Whether to automount the service account token
+  automountServiceAccountToken: false
+
+# Service configuration
+service:
+  type: NodePort
+  port: 80
+  # nodePort: 30080  # Uncomment to specify a specific NodePort
+
+# Database configuration
+database:
+  host: wordpress-mysql
+  user: wordpress
+  # Name of the secret containing the database password
+  secretName: mysql-pass
+  # Key in the secret containing the password
+  secretKey: password
+
+# Persistence configuration
+persistence:
+  enabled: true
+  # Storage class to use (e.g., longhorn, standard, gp2)
+  storageClassName: longhorn
+  accessModes:
+    - ReadWriteOnce
+  size: 1Gi
+  # Mount path for WordPress data
+  mountPath: /var/www/html
+
+# Deployment strategy
+strategy:
+  type: Recreate
+
+# Resource limits and requests
+resources: {}
+  # limits:
+  #   cpu: 500m
+  #   memory: 512Mi
+  # requests:
+  #   cpu: 250m
+  #   memory: 256Mi
+
+# Additional environment variables
+extraEnv: []
+  # - name: WORDPRESS_DEBUG
+  #   value: "1"
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity rules
+affinity: {}

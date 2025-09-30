@@ -20,6 +20,11 @@ if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
   exit 1
 fi
 
+if [ -z "$R53_ZONE" ]; then
+  echo "Error: R53_ZONE must be set in $CREDENTIALS_FILE"
+  exit 1
+fi
+
 echo "Creating AWS credentials secret for cert-manager..."
 kubectl create secret generic aws-credentials \
   --from-literal=access-key-id="$AWS_ACCESS_KEY_ID" \
@@ -34,7 +39,14 @@ kubectl create secret generic aws-credentials \
   --namespace=external-dns \
   --dry-run=client -o yaml | kubectl apply -f -
 
+echo "Creating external-dns-config configmap..."
+kubectl create configmap external-dns-config \
+  --from-literal=zone-id="$R53_ZONE" \
+  --namespace=external-dns \
+  --dry-run=client -o yaml | kubectl apply -f -
+
 echo ""
-echo "AWS credentials secrets created successfully!"
+echo "AWS credentials secrets and configmap created successfully!"
 echo "  - cert-manager/aws-credentials"
 echo "  - external-dns/aws-credentials"
+echo "  - external-dns/external-dns-config"

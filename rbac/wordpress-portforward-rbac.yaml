@@ -1,0 +1,37 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: wordpress-portforward
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: wordpress-portforward
+  namespace: default
+rules:
+  # Get pods to identify the target pod
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+    resourceNames: []
+
+  # Port-forward permission
+  - apiGroups: [""]
+    resources: ["pods/portforward"]
+    verbs: ["create", "get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: wordpress-portforward-binding
+  namespace: default
+subjects:
+  - kind: ServiceAccount
+    name: wordpress-portforward
+    namespace: default
+roleRef:
+  kind: Role
+  name: wordpress-portforward
+  apiGroup: rbac.authorization.k8s.io

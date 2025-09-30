@@ -46,7 +46,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: external-dns
-  namespace: external-dns
+  namespace: kube-system
 spec:
   strategy:
     type: Recreate
@@ -60,28 +60,32 @@ spec:
     spec:
       serviceAccountName: external-dns
       containers:
-      - name: external-dns
-        image: registry.k8s.io/external-dns/external-dns:v0.15.0
-        args:
-        - --source=service
-        - --source=ingress
-        - --domain-filter=example.com # Replace with your domain
-        - --provider=aws
-        - --policy=upsert-only
-        - --registry=txt
-        - --txt-owner-id=k8s
-        - --aws-zone-type=public
-        env:
-        - name: AWS_ACCESS_KEY_ID
-          valueFrom:
-            secretKeyRef:
-              name: aws-credentials
-              key: access-key-id
-        - name: AWS_SECRET_ACCESS_KEY
-          valueFrom:
-            secretKeyRef:
-              name: aws-credentials
-              key: secret-access-key
+        - name: external-dns
+          image: k8s.gcr.io/external-dns/external-dns:v0.14.0
+          args:
+            - --provider=aws
+            - --registry=txt
+            - --txt-owner-id=external-dns
+            # zone ID from configmap env var
+            - --zone-id-filter=$(ROUTE53_ZONE_ID)
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: aws-credentials
+                  key: access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aws-credentials
+                  key: secret-access-key
+            - name: AWS_REGION
+              value: us-east-1   # adjust if needed
+            - name: ROUTE53_ZONE_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: external-dns-config
+                  key: zone-id
 EOF
 
 echo ""
