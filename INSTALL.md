@@ -111,7 +111,55 @@ kubectl get pods -n cert-manager
 
 ---
 
-### 7. External-DNS - Automatic DNS Management
+### 7. Kubernetes Dashboard - Cluster Management UI
+
+Install the Kubernetes Dashboard for web-based cluster management.
+
+```bash
+./infra/dashboard/install.sh
+```
+
+**Create admin user:**
+```bash
+kubectl apply -f infra/dashboard/dashboard-admin.yaml
+```
+
+**Get access token:**
+```bash
+kubectl -n kubernetes-dashboard create token admin-user
+```
+
+**Access dashboard:**
+```bash
+kubectl proxy
+# Then open: http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
+```
+
+**Verify:**
+```bash
+kubectl get pods -n kubernetes-dashboard
+```
+
+---
+
+### 8. Let's Encrypt ClusterIssuers - Certificate Issuers
+
+Setup Let's Encrypt certificate issuers with Route53 DNS challenge.
+
+```bash
+./infra/cert-manager/setup-letsencrypt-issuer.sh
+```
+
+**Verify:**
+```bash
+kubectl get clusterissuer
+kubectl describe clusterissuer letsencrypt-staging
+kubectl describe clusterissuer letsencrypt-prod
+```
+
+---
+
+### 9. External-DNS - Automatic DNS Management
 
 External-DNS automatically manages DNS records in Route53 and depends on AWS credentials.
 
@@ -130,7 +178,7 @@ kubectl get pods -n external-dns
 
 After infrastructure components are ready, deploy applications.
 
-### 8. RBAC Configuration
+### 10. RBAC Configuration
 
 Apply RBAC configurations for applications:
 
@@ -141,7 +189,7 @@ kubectl apply -f rbac/wordpress-portforward-rbac.yaml
 
 ---
 
-### 9. MySQL - Database
+### 11. MySQL - Database
 
 MySQL requires Longhorn for persistent storage.
 
@@ -156,7 +204,7 @@ kubectl get pods -l app=wordpress,tier=mysql -w
 
 ---
 
-### 10. WordPress - Application
+### 12. WordPress - Application
 
 WordPress depends on MySQL and requires storage from Longhorn. WordPress is deployed using a Helm chart.
 
@@ -200,7 +248,7 @@ helm uninstall wordpress
 
 ---
 
-### 11. NGINX - Web Server
+### 13. NGINX - Web Server
 
 Deploy NGINX if needed:
 
