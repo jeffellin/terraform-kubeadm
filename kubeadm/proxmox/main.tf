@@ -35,6 +35,7 @@ resource "proxmox_virtual_environment_vm" "k8s_master" {
 
   cpu {
     cores = 2
+    type  = "host"
   }
 
   memory {
@@ -105,6 +106,7 @@ resource "proxmox_virtual_environment_vm" "k8s_worker" {
 
   cpu {
     cores = 2
+    type  = "host"
   }
 
   memory {
@@ -132,7 +134,7 @@ resource "proxmox_virtual_environment_vm" "k8s_worker" {
       }
     }
 
-    user_data_file_id = proxmox_virtual_environment_file.worker_cloud_init.id
+    user_data_file_id = proxmox_virtual_environment_file.worker_cloud_init[count.index].id
   }
 
   depends_on = [proxmox_virtual_environment_vm.k8s_master]
@@ -141,6 +143,7 @@ resource "proxmox_virtual_environment_vm" "k8s_worker" {
 }
 
 resource "proxmox_virtual_environment_file" "worker_cloud_init" {
+  count        = 2
   content_type = "snippets"
   datastore_id = var.snippets_storage
   node_name    = var.proxmox_node

@@ -24,7 +24,7 @@ get_join_command() {
         echo "Attempt $attempt to get join command from master..."
 
         # Try to get the join command from master
-        join_cmd=$(ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=10 ubuntu@${MASTER_IP} 'cat /tmp/join-command' 2>/dev/null)
+        join_cmd=$(ssh -i /home/ubuntu/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=10 ubuntu@${MASTER_IP} 'cat /tmp/join-command' 2>/dev/null)
 
         if [ $? -eq 0 ] && [ ! -z "$join_cmd" ]; then
             echo "Successfully retrieved join command"

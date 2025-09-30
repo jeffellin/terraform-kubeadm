@@ -9,7 +9,11 @@ echo "Starting Kubernetes installation..."
 
 # Update system
 sudo apt-get update
-sudo apt-get install -y apt-transport-https ca-certificates curl
+sudo apt-get install -y apt-transport-https ca-certificates curl open-iscsi
+
+# Enable and start open-iscsi (required for Longhorn)
+sudo systemctl enable iscsid
+sudo systemctl start iscsid
 
 # Install Docker
 curl -fsSL https://get.docker.com -o get-docker.sh

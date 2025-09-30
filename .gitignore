@@ -17,6 +17,8 @@
 id_rsa*
 id_ed25519*
 *.pub
+cluster-ssh-key
+cluster-ssh-key.pub
 
 # Kubernetes config files
 kubeconfig*
@@ -46,11 +48,11 @@ Thumbs.db
 *.temp
 
 # Credentials and secrets
-secrets/
 credentials/
 .env
 .env.local
 .env.production
+infra/secrets/aws-credentials
 
 # Kubernetes join tokens and certificates
 join-command.sh

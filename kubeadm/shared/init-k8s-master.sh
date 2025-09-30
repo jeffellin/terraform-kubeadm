@@ -39,3 +39,23 @@ sudo chmod 644 /tmp/join-command
 
 echo "Kubernetes master initialized successfully"
 echo "Join command saved to /tmp/join-command"
+
+# Install Helm if not already installed
+if ! command -v helm &> /dev/null; then
+    echo "Installing Helm..."
+    curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+fi
+
+# Install FluxCD
+echo "Installing FluxCD..."
+helm repo add fluxcd https://fluxcd-community.github.io/helm-charts
+helm repo update
+helm install flux2 fluxcd/flux2 \
+  --namespace flux-system \
+  --create-namespace
+
+# Wait for Flux components to be ready
+echo "Waiting for Flux components to be ready..."
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=flux2 -n flux-system --timeout=300s || true
+
+echo "FluxCD installation completed successfully!"
