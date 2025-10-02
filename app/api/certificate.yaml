@@ -1,0 +1,12 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: api-wordpress-tls
+  namespace: wordpress
+spec:
+  secretName: api-wordpress-tls
+  issuerRef:
+    name: selfsigned-issuer
+    kind: ClusterIssuer
+  dnsNames:
+  - api.wordpress.ellin.net

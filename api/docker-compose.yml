@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  wordpress-stats-api:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=${DB_HOST:-localhost}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_USER=${DB_USER:-root}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME:-wordpress}
+      - DB_TABLE_PREFIX=${DB_TABLE_PREFIX:-wp_}
+      - PORT=8080
+    restart: unless-stopped

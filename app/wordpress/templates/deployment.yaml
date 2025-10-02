@@ -27,6 +27,8 @@ spec:
         env:
         - name: WORDPRESS_DB_HOST
           value: {{ .Values.database.host }}
+        - name: WORDPRESS_DB_NAME
+          value: {{ .Values.database.name }}
         - name: WORDPRESS_DB_USER
           value: {{ .Values.database.user }}
         - name: WORDPRESS_DB_PASSWORD

@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wordpress-stats-api
+  namespace: wordpress
+  labels:
+    app: wordpress-stats-api
+  annotations:
+    projectcontour.io/response-timeout: "60s"
+    external-dns.alpha.kubernetes.io/hostname: api.wordpress.ellin.net
+spec:
+  ingressClassName: contour
+  tls:
+  - hosts:
+    - api.wordpress.ellin.net
+    secretName: api-wordpress-tls
+  rules:
+  - host: api.wordpress.ellin.net
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: wordpress-stats-api
+            port:
+              number: 80

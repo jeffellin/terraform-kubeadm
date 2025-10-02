@@ -25,6 +25,11 @@ if [ -z "$R53_ZONE" ]; then
   exit 1
 fi
 
+# Create namespaces if they don't exist
+echo "Ensuring namespaces exist..."
+kubectl create namespace cert-manager --dry-run=client -o yaml | kubectl apply -f -
+kubectl create namespace external-dns --dry-run=client -o yaml | kubectl apply -f -
+
 echo "Creating AWS credentials secret for cert-manager..."
 kubectl create secret generic aws-credentials \
   --from-literal=access-key-id="$AWS_ACCESS_KEY_ID" \

@@ -3,6 +3,19 @@ set -e
 
 echo "Installing external-dns..."
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CREDENTIALS_FILE="$SCRIPT_DIR/../secrets/aws-credentials"
+
+if [ ! -f "$CREDENTIALS_FILE" ]; then
+  echo "Error: aws-credentials file not found!"
+  echo "Please create $CREDENTIALS_FILE with your AWS credentials"
+  echo "Run: ../secrets/create-aws-secret.sh first"
+  exit 1
+fi
+
+# Source the credentials file
+source "$CREDENTIALS_FILE"
+
 # Create namespace
 kubectl create namespace external-dns --dry-run=client -o yaml | kubectl apply -f -
 
@@ -46,7 +59,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: external-dns
-  namespace: kube-system
+  namespace: external-dns
 spec:
   strategy:
     type: Recreate
@@ -63,11 +76,12 @@ spec:
         - name: external-dns
           image: k8s.gcr.io/external-dns/external-dns:v0.14.0
           args:
+            - --source=ingress
             - --provider=aws
             - --registry=txt
             - --txt-owner-id=external-dns
-            # zone ID from configmap env var
-            - --zone-id-filter=$(ROUTE53_ZONE_ID)
+            # zone ID from credentials file
+            - --zone-id-filter=${R53_ZONE}
           env:
             - name: AWS_ACCESS_KEY_ID
               valueFrom:

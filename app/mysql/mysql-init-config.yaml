@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-init-config
+  namespace: mysql
+data:
+  01-remote-access.sql: |
+    -- Grant remote access to wordpress user from any host
+    -- This allows Kubernetes pods from any namespace to connect
+    CREATE USER IF NOT EXISTS 'wordpress'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';
+    GRANT ALL PRIVILEGES ON wordpress.* TO 'wordpress'@'%';
+
+    -- Also ensure localhost access
+    GRANT ALL PRIVILEGES ON wordpress.* TO 'wordpress'@'localhost';
+
+    -- Allow root access from pod network (useful for debugging)
+    -- Uncomment if you need root access from other pods
+    -- GRANT ALL PRIVILEGES ON *.* TO 'root'@'10.%' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}' WITH GRANT OPTION;
+
+    FLUSH PRIVILEGES;
+
+    -- Show users and their hosts
+    SELECT user, host FROM mysql.user WHERE user IN ('wordpress', 'root');

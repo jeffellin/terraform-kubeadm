@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "wordpress.fullname" . }}
+  labels:
+    {{- include "wordpress.labels" . | nindent 4 }}
+  annotations:
+    projectcontour.io/response-timeout: "60s"
+    external-dns.alpha.kubernetes.io/hostname: wordpress.ellin.net
+spec:
+  ingressClassName: contour
+  rules:
+  - host: wordpress.ellin.net
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "wordpress.fullname" . }}
+            port:
+              number: {{ .Values.service.port }}

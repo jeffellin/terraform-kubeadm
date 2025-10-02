@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress-stats-api
+  namespace: wordpress
+  labels:
+    app: wordpress-stats-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: wordpress-stats-api
+  template:
+    metadata:
+      labels:
+        app: wordpress-stats-api
+    spec:
+      containers:
+      - name: wordpress-stats-api
+        image: ellinj/wordpress-stats:latest 
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: DB_HOST
+          value: "wordpress-mysql.mysql"
+        - name: DB_PORT
+          value: "3306"
+        - name: DB_USER
+          value: "wordpress"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-pass
+              key: password
+        - name: DB_NAME
+          value: "wordpress"
+        - name: DB_TABLE_PREFIX
+          valueFrom:
+            configMapKeyRef:
+              name: wordpress-config
+              key: db-table-prefix
+        - name: PORT
+          value: "8080"
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /api/userinfo
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /api/userinfo
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10

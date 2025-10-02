@@ -36,7 +36,8 @@ service:
 
 # Database configuration
 database:
-  host: wordpress-mysql
+  host: wordpress-mysql.mysql.svc.cluster.local
+  name: wordpress
   user: wordpress
   # Name of the secret containing the database password
   secretName: mysql-pass

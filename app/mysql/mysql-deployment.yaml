@@ -2,6 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: wordpress-mysql
+  namespace: mysql
   labels:
     app: wordpress
 spec:
@@ -16,6 +17,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: mysql-pv-claim
+  namespace: mysql
   labels:
     app: wordpress
 spec:
@@ -30,6 +32,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: wordpress-mysql
+  namespace: mysql
   labels:
     app: wordpress
 spec:
@@ -48,6 +51,10 @@ spec:
       containers:
       - image: mariadb:10.11
         name: mysql
+        args:
+        - --bind-address=0.0.0.0
+        - --character-set-server=utf8mb4
+        - --collation-server=utf8mb4_unicode_ci
         env:
         - name: MYSQL_ROOT_PASSWORD
           valueFrom:
@@ -69,7 +76,32 @@ spec:
         volumeMounts:
         - name: mysql-persistent-storage
           mountPath: /var/lib/mysql
+        - name: mysql-config
+          mountPath: /docker-entrypoint-initdb.d
+        livenessProbe:
+          exec:
+            command:
+            - mysqladmin
+            - ping
+            - -h
+            - localhost
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          exec:
+            command:
+            - mysqladmin
+            - ping
+            - -h
+            - localhost
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 2
       volumes:
       - name: mysql-persistent-storage
         persistentVolumeClaim:
           claimName: mysql-pv-claim
+      - name: mysql-config
+        configMap:
+          name: mysql-init-config
