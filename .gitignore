@@ -20,6 +20,11 @@ id_ed25519*
 cluster-ssh-key
 cluster-ssh-key.pub
 
+# Client certificates and CSRs
+*.csr
+*.p12
+dashboard-client-certs/
+
 # Kubernetes config files
 kubeconfig*
 *.kubeconfig

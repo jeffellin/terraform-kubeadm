@@ -100,6 +100,7 @@ create_resources() {
       {
         "Effect": "Allow",
         "Action": [
+          "route53:GetChange",
           "route53:ListHostedZones",
           "route53:ListResourceRecordSets"
         ],
