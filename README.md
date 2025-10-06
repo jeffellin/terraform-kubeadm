@@ -143,6 +143,90 @@ Principle of Least Privilege implemented through dedicated service accounts:
 - ⚠️ **Cons**: More complex permission management, multiple kubeconfigs
 - **Alternative Considered**: Shared admin access - rejected for security
 
+**3. Client Certificate Authentication (Optional)**
+
+Alternative RBAC approach using x.509 client certificates for user identity.
+
+**User Roles:**
+- **alice-admin**: Full admin access to wordpress namespace
+- **carol-editor**: Edit existing resources only (no create permission)
+- **bob-viewer**: Read-only access to wordpress namespace
+
+**RBAC Flow:**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        wordpress Namespace                          │
+│                                                                     │
+│  ┌──────────────┐      ┌──────────────────────────────────────┐   │
+│  │   alice      │──┐   │                                      │   │
+│  │  (CN: alice- │  │   │  RoleBinding:                        │   │
+│  │   admin)     │  └──▶│  wordpress-admins-binding            │   │
+│  └──────────────┘      │                                      │   │
+│         ║              │  Subjects: wordpress-admins (Group)  │   │
+│         ║              │  RoleRef: admin (ClusterRole)        │   │
+│    O=wordpress-        │                                      │   │
+│      admins            └────────────┬─────────────────────────┘   │
+│                                     │                             │
+│  ┌──────────────┐      ┌────────────▼─────────────────────────┐   │
+│  │   carol      │──┐   │                                      │   │
+│  │  (CN: carol- │  │   │  ClusterRole: admin                  │   │
+│  │   editor)    │  │   │  • Full CRUD on all resources        │   │
+│  └──────────────┘  │   │  • Can manage RoleBindings           │   │
+│         ║          │   │                                      │   │
+│         ║          │   └──────────────────────────────────────┘   │
+│    O=wordpress-    │                                               │
+│      editors       │   ┌──────────────────────────────────────┐   │
+│                    └──▶│  RoleBinding:                        │   │
+│  ┌──────────────┐      │  wordpress-editors-binding           │   │
+│  │   bob        │──┐   │                                      │   │
+│  │  (CN: bob-   │  │   │  Subjects: wordpress-editors (Group) │   │
+│  │   viewer)    │  │   │  RoleRef: edit-existing-only         │   │
+│  └──────────────┘  │   │          (ClusterRole)               │   │
+│         ║          │   └────────────┬─────────────────────────┘   │
+│         ║          │                │                             │
+│    O=wordpress-    │   ┌────────────▼─────────────────────────┐   │
+│      viewers       │   │  ClusterRole: edit-existing-only     │   │
+│                    │   │  • get, list, watch (all resources)  │   │
+│                    │   │  • update, patch, delete             │   │
+│                    └──▶│  • NO create permission              │   │
+│                        └──────────────────────────────────────┘   │
+│                                                                    │
+│                        ┌──────────────────────────────────────┐   │
+│                        │  RoleBinding:                        │   │
+│                        │  wordpress-viewers-binding           │   │
+│                        │                                      │   │
+│                        │  Subjects: wordpress-viewers (Group) │   │
+│                        │  RoleRef: view (ClusterRole)         │   │
+│                        └────────────┬─────────────────────────┘   │
+│                                     │                             │
+│                        ┌────────────▼─────────────────────────┐   │
+│                        │  ClusterRole: view                   │   │
+│                        │  • get, list, watch (all resources)  │   │
+│                        │  • NO write permissions              │   │
+│                        └──────────────────────────────────────┘   │
+│                                                                    │
+└─────────────────────────────────────────────────────────────────────┘
+
+Legend:
+  CN (Common Name)   = User identity in certificate
+  O (Organization)   = Group membership in certificate
+  ClusterRole        = Cluster-wide role definition
+  RoleBinding        = Namespace-scoped binding (limits to wordpress namespace)
+```
+
+**Key Design Decisions:**
+- Client certificates provide user identity (CN) and group membership (O field)
+- ClusterRoles defined cluster-wide but bound at namespace level
+- Custom `edit-existing-only` role prevents resource creation (operator safety)
+- All permissions scoped to wordpress namespace only
+- No cluster-wide access for any user
+
+**Tradeoffs:**
+- ✅ **Pros**: Better audit trail (username in logs), no token management, browser-based auth
+- ⚠️ **Cons**: Certificate lifecycle management, requires PKI understanding
+- **Alternative Considered**: Bearer tokens - rejected for better identity tracking
+
 ### Application Layer
 
 **Database: MySQL**
@@ -246,13 +330,27 @@ External-DNS → MySQL → WordPress → API → RBAC
 
 ## Deployment Workflow (RBAC-Enabled)
 
+### Option 1: Service Account-Based (CI/CD)
+
 1. **Namespace Creation**: `kubectl create namespace wordpress`
 2. **RBAC Setup**: `kubectl apply -f rbac/wordpress-rbac.yaml`
-3. **Kubeconfig Generation**: `./rbac/create-sa-kubeconfig.sh wordpress wordpress-deployer`
-4. **Switch Context**: `export KUBECONFIG=./rbac/wordpress-deployer.kubeconfig`
+3. **Kubeconfig Generation**: `./create-sa-kubeconfig.sh wordpress wordpress-deployer`
+4. **Switch Context**: `export KUBECONFIG=$(pwd)/wordpress-deployer.kubeconfig`
 5. **Verify Identity**: `kubectl auth whoami`
 6. **Deploy**: `helm install wordpress ./app/wordpress -n wordpress`
 7. **Access Setup**: Create `wordpress-portforward` kubeconfig for port-forward access
+
+### Option 2: Client Certificate-Based (User Access)
+
+1. **Namespace Creation**: `kubectl create namespace wordpress`
+2. **RBAC Setup**: `kubectl apply -f rbac/wordpress-client-cert-rbac.yaml`
+3. **Generate Certificates**:
+   - `cd infra/dashboard`
+   - `./client-cert-namespace.sh alice-admin wordpress-admins wordpress admin`
+4. **Create Kubeconfig**: `./access-with-client-cert-identity.sh alice-admin`
+5. **Switch Context**: `export KUBECONFIG=$(pwd)/dashboard-client-certs/alice-admin-dashboard.kubeconfig`
+6. **Verify Identity**: `kubectl config current-context`
+7. **Deploy**: `helm install wordpress ../../app/wordpress -n wordpress`
 
 ## Production Considerations
 
@@ -320,6 +418,8 @@ External-DNS → MySQL → WordPress → API → RBAC
 For complete installation instructions, see [INSTALL.md](INSTALL.md).
 
 For RBAC and service account management, see the `rbac/` directory.
+
+For client certificate authentication setup, see Section 15 in [INSTALL.md](INSTALL.md#15-client-certificate-authentication---namespace-access-optional).
 
 ## Future Improvements
 
