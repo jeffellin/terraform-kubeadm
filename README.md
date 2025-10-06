@@ -281,6 +281,158 @@ Go-based REST API providing WordPress statistics by querying MySQL directly.
 - Shows cross-namespace database access patterns
 - Example of API-first approach to WordPress data
 
+## Application Deployment Architecture
+
+The `app/` directory contains all application-level deployments organized by service:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           External Traffic                                      │
+│                                                                                 │
+│                     wordpress.ellin.net          api.ellin.net                 │
+│                            │                          │                         │
+│                            │ HTTPS (TLS)              │ HTTPS (TLS)            │
+└────────────────────────────┼──────────────────────────┼─────────────────────────┘
+                             │                          │
+                             ▼                          ▼
+                    ┌────────────────┐         ┌────────────────┐
+                    │  Contour       │         │  Contour       │
+                    │  (Ingress)     │         │  (Ingress)     │
+                    └────────┬───────┘         └────────┬───────┘
+                             │                          │
+┌────────────────────────────┼──────────────────────────┼─────────────────────────┐
+│  wordpress Namespace       │                          │                         │
+│                            │                          │                         │
+│                    ┌───────▼────────┐         ┌──────▼─────────┐               │
+│                    │  wordpress-    │         │  wordpress-    │               │
+│                    │  wordpress     │         │  stats-api     │               │
+│                    │  (Service)     │         │  (Service)     │               │
+│                    └───────┬────────┘         └──────┬─────────┘               │
+│                            │                         │                         │
+│                    ┌───────▼────────┐         ┌──────▼─────────┐               │
+│  ┌──────────┐      │  WordPress     │         │  API           │               │
+│  │SecretImport├────▶│  Deployment    │         │  Deployment    │               │
+│  │mysql-pass  │     │  (1 replica)   │         │  (3 replicas)  │               │
+│  └────────────┘     │                │         │                │               │
+│                     │  Image:        │         │  Image:        │               │
+│                     │  wordpress:    │         │  wordpress-    │               │
+│                     │  6.2.1-apache  │         │  stats:latest  │               │
+│                     └───────┬────────┘         └──────┬─────────┘               │
+│                             │                         │                         │
+│                     ┌───────▼────────┐                │                         │
+│                     │  Longhorn PVC  │                │                         │
+│                     │  (1Gi)         │                │                         │
+│                     │  /var/www/html │                │                         │
+│                     └────────────────┘                │                         │
+│                             │                         │                         │
+└─────────────────────────────┼─────────────────────────┼─────────────────────────┘
+                              │                         │
+                              │ MySQL Query             │ MySQL Query
+                              │ (3306)                  │ (3306)
+                              │                         │
+┌─────────────────────────────┼─────────────────────────┼─────────────────────────┐
+│  mysql Namespace            │                         │                         │
+│                             │                         │                         │
+│                    ┌────────▼─────────────────────────▼────┐                    │
+│                    │  wordpress-mysql.mysql                │                    │
+│  ┌──────────┐      │  (Headless Service - ClusterIP: None) │                    │
+│  │Password  │      └────────┬──────────────────────────────┘                    │
+│  │SecretExport     │                                                            │
+│  │  (to:    │      │                                                            │
+│  │ wordpress,       │                                                            │
+│  │   mysql) │      │                                                            │
+│  └────┬─────┘      │                                                            │
+│       │     ┌──────▼────────┐                                                   │
+│       └────▶│  MySQL        │                                                   │
+│             │  Deployment   │                                                   │
+│             │  (1 replica)  │                                                   │
+│             │               │                                                   │
+│             │  Image:       │                                                   │
+│             │  mariadb:10.11│                                                   │
+│             └───────┬───────┘                                                   │
+│                     │                                                           │
+│             ┌───────▼────────┐        ┌─────────────────┐                      │
+│             │  Longhorn PVC  │        │  Init ConfigMap │                      │
+│             │  (1Gi)         │◀───────│  (SQL Schema)   │                      │
+│             │  /var/lib/mysql│        └─────────────────┘                      │
+│             └────────────────┘                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  default Namespace (Optional/Test)                                             │
+│                                                                                 │
+│                    ┌────────────────┐                                          │
+│                    │  nginx         │                                          │
+│                    │  (Service)     │                                          │
+│                    │  NodePort:30080│                                          │
+│                    └───────┬────────┘                                          │
+│                            │                                                   │
+│                    ┌───────▼────────┐                                          │
+│                    │  Nginx         │                                          │
+│                    │  Deployment    │                                          │
+│                    │  (3 replicas)  │                                          │
+│                    │                │                                          │
+│                    │  Image:        │                                          │
+│                    │  nginx:latest  │                                          │
+│                    └────────────────┘                                          │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+Key Components:
+
+app/mysql/
+├── MySQL Deployment (MariaDB 10.11)
+│   ├── Single replica (no HA)
+│   ├── Persistent storage: Longhorn (1Gi)
+│   ├── Headless service (ClusterIP: None)
+│   ├── Init ConfigMap for schema setup
+│   └── Password managed by SecretGen (exported to wordpress/mysql namespaces)
+└── Namespace: mysql
+
+app/wordpress/
+├── WordPress Helm Chart
+│   ├── Deployment: 1 replica (Recreate strategy for RWO PVC)
+│   ├── Image: wordpress:6.2.1-apache
+│   ├── Persistent storage: Longhorn (1Gi) for /var/www/html
+│   ├── Service: NodePort
+│   ├── Ingress: wordpress.ellin.net (TLS via cert-manager)
+│   ├── SecretImport: mysql-pass from secrets namespace
+│   └── Database connection: wordpress-mysql.mysql.svc.cluster.local:3306
+└── Namespace: wordpress
+
+app/api/
+├── WordPress Stats API (Go)
+│   ├── Deployment: 3 replicas (stateless)
+│   ├── Image: ellinj/wordpress-stats:latest
+│   ├── Service: ClusterIP
+│   ├── Ingress: api.ellin.net (TLS via cert-manager)
+│   ├── ConfigMap: Database table prefix
+│   ├── Direct MySQL access: wordpress-mysql.mysql:3306
+│   └── Endpoint: /api/userinfo (returns WordPress post statistics)
+└── Namespace: wordpress
+
+app/nginx/ (Optional/Test)
+├── Simple Nginx deployment
+│   ├── Deployment: 3 replicas
+│   ├── Image: nginx:latest
+│   └── Service: NodePort (30080)
+└── Namespace: default
+
+Data Flow:
+1. External HTTPS → Contour Ingress → WordPress Service → WordPress Pod
+2. WordPress Pod → MySQL Headless Service → MySQL Pod
+3. External HTTPS → Contour Ingress → API Service → API Pods → MySQL Pod
+4. SecretGen (secrets namespace) → SecretExport → SecretImport (wordpress/mysql)
+
+Storage:
+- WordPress: 1Gi Longhorn PVC (wp-content, plugins, themes, uploads)
+- MySQL: 1Gi Longhorn PVC (database files)
+
+Security:
+- TLS Certificates: Let's Encrypt via cert-manager
+- Secrets: SecretGen for password generation and distribution
+- Service Account: wordpress-sa (automountServiceAccountToken: false)
+```
+
 ## Key Design Patterns
 
 ### 1. Infrastructure as Code (IaC)
