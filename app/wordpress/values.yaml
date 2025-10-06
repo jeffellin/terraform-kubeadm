@@ -34,6 +34,16 @@ service:
   port: 80
   # nodePort: 30080  # Uncomment to specify a specific NodePort
 
+# Ingress configuration
+ingress:
+  enabled: true
+  host: wordpress.ellin.net
+  tls:
+    enabled: true
+    # Use letsencrypt-staging for testing, letsencrypt-prod for production
+    clusterIssuer: letsencrypt-prod
+    secretName: wordpress-tls
+
 # Database configuration
 database:
   host: wordpress-mysql.mysql.svc.cluster.local

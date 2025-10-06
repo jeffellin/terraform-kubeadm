@@ -3,13 +3,13 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: wordpress-deployer
-  namespace: default
+  namespace: wordpress
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: wordpress-deployer
-  namespace: default
+  namespace: wordpress
 rules:
   # Deployments - for WordPress and MySQL
   - apiGroups: ["apps"]
@@ -50,16 +50,31 @@ rules:
   - apiGroups: [""]
     resources: ["pods/log"]
     verbs: ["get", "list"]
+
+  # ServiceAccounts - for Helm chart deployment
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Ingresses - for exposing WordPress
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # SecretImports - for importing MySQL password from secrets namespace
+  - apiGroups: ["secretgen.carvel.dev"]
+    resources: ["secretimports"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: wordpress-deployer-binding
-  namespace: default
+  namespace: wordpress
 subjects:
   - kind: ServiceAccount
     name: wordpress-deployer
-    namespace: default
+    namespace: wordpress
 roleRef:
   kind: Role
   name: wordpress-deployer

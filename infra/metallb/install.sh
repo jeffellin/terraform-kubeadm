@@ -38,6 +38,11 @@ spec:
   - default-pool
 EOF
 
+# Verify IPAddressPool and L2Advertisement were created
+echo "Verifying MetalLB configuration..."
+kubectl get ipaddresspool -n metallb-system default-pool
+kubectl get l2advertisement -n metallb-system default-l2
+
 echo "MetalLB installation complete!"
 echo ""
 echo "IP Address Pool: 192.168.1.220-192.168.1.225"

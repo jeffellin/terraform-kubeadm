@@ -6,7 +6,7 @@ metadata:
 spec:
   secretName: api-wordpress-tls
   issuerRef:
-    name: selfsigned-issuer
+    name: letsencrypt-prod
     kind: ClusterIssuer
   dnsNames:
   - api.wordpress.ellin.net

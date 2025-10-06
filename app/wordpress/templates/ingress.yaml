@@ -6,11 +6,20 @@ metadata:
     {{- include "wordpress.labels" . | nindent 4 }}
   annotations:
     projectcontour.io/response-timeout: "60s"
-    external-dns.alpha.kubernetes.io/hostname: wordpress.ellin.net
+    external-dns.alpha.kubernetes.io/hostname: {{ .Values.ingress.host }}
+    {{- if .Values.ingress.tls.enabled }}
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.tls.clusterIssuer }}
+    {{- end }}
 spec:
   ingressClassName: contour
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+  - hosts:
+    - {{ .Values.ingress.host }}
+    secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
   rules:
-  - host: wordpress.ellin.net
+  - host: {{ .Values.ingress.host }}
     http:
       paths:
       - path: /

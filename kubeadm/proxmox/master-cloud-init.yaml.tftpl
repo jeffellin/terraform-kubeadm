@@ -20,6 +20,6 @@ write_files:
 runcmd:
   - systemctl enable qemu-guest-agent
   - systemctl start qemu-guest-agent
-  - curl -fsSL https://raw.githubusercontent.com/jeffellin/terraform-kubeadm/main/kubeadm/shared/install-k8s-common.sh | bash
+  - DEBIAN_FRONTEND=noninteractive curl -fsSL https://raw.githubusercontent.com/jeffellin/terraform-kubeadm/main/kubeadm/shared/install-k8s-common.sh | bash
   - sleep 30
-  - curl -fsSL https://raw.githubusercontent.com/jeffellin/terraform-kubeadm/main/kubeadm/shared/init-k8s-master.sh | bash -s -- 192.168.1.200 k8s-cluster
+  - curl -fsSL https://raw.githubusercontent.com/jeffellin/terraform-kubeadm/main/kubeadm/shared/init-k8s-master.sh | sudo bash -s -- 192.168.1.200 k8s-cluster
