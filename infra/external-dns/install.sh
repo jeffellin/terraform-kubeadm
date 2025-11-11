@@ -77,6 +77,7 @@ spec:
           image: k8s.gcr.io/external-dns/external-dns:v0.14.0
           args:
             - --source=ingress
+            - --source=service
             - --provider=aws
             - --registry=txt
             - --txt-owner-id=external-dns

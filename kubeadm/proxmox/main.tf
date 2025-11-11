@@ -86,11 +86,19 @@ resource "proxmox_virtual_environment_file" "master_cloud_init" {
   }
 }
 
+locals {
+  worker_nodes = {
+    "1" = { ip = 201, vm_id = 201 }
+    "2" = { ip = 202, vm_id = 202 }
+    "3" = { ip = 203, vm_id = 203 }
+  }
+}
+
 resource "proxmox_virtual_environment_vm" "k8s_worker" {
-  count       = 2
-  name        = "k8s-worker-${count.index + 1}"
+  for_each    = local.worker_nodes
+  name        = "k8s-worker-${each.key}"
   node_name   = var.proxmox_node
-  vm_id       = 201 + count.index
+  vm_id       = each.value.vm_id
 
   clone {
     vm_id = var.template_id
@@ -110,7 +118,14 @@ resource "proxmox_virtual_environment_vm" "k8s_worker" {
   }
 
   memory {
-    dedicated = 2048
+    dedicated = 8192
+  }
+
+  disk {
+    datastore_id = var.storage_pool
+    interface    = "scsi0"
+    size         = 50
+    file_format  = "raw"
   }
 
   network_device {
@@ -129,12 +144,12 @@ resource "proxmox_virtual_environment_vm" "k8s_worker" {
 
     ip_config {
       ipv4 {
-        address = "192.168.1.${201 + count.index}/24"
+        address = "192.168.1.${each.value.ip}/24"
         gateway = "192.168.1.1"
       }
     }
 
-    user_data_file_id = proxmox_virtual_environment_file.worker_cloud_init[count.index].id
+    user_data_file_id = proxmox_virtual_environment_file.worker_cloud_init[each.key].id
   }
 
   depends_on = [proxmox_virtual_environment_vm.k8s_master]
@@ -143,19 +158,19 @@ resource "proxmox_virtual_environment_vm" "k8s_worker" {
 }
 
 resource "proxmox_virtual_environment_file" "worker_cloud_init" {
-  count        = 2
+  for_each     = local.worker_nodes
   content_type = "snippets"
   datastore_id = var.snippets_storage
   node_name    = var.proxmox_node
 
   source_raw {
     data = templatefile("${path.module}/worker-cloud-init.yaml.tftpl", {
-      hostname = "k8s-worker-${count.index + 1}"
+      hostname = "k8s-worker-${each.key}"
       ssh_public_key = var.ssh_public_key
       cluster_ssh_key = file("${path.module}/cluster-ssh-key.pub")
       cluster_ssh_private_key = file("${path.module}/cluster-ssh-key")
     })
 
-    file_name = "worker-cloud-init-${count.index + 1}.yaml"
+    file_name = "worker-cloud-init-${each.key}.yaml"
   }
 }

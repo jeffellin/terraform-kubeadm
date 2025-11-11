@@ -5,7 +5,7 @@ output "master_vm_id" {
 
 output "worker_vm_ids" {
   description = "Proxmox VM IDs of the worker nodes"
-  value       = proxmox_virtual_environment_vm.k8s_worker[*].vm_id
+  value       = { for key, vm in proxmox_virtual_environment_vm.k8s_worker : key => vm.vm_id }
 }
 
 output "master_ip" {
@@ -15,5 +15,5 @@ output "master_ip" {
 
 output "worker_ips" {
   description = "IP addresses of the Kubernetes worker nodes"
-  value       = ["192.168.1.201", "192.168.1.202"]
+  value       = ["192.168.1.201", "192.168.1.202", "192.168.1.203"]
 }
