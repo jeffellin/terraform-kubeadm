@@ -7,6 +7,20 @@ set -e
 
 echo "Starting Kubernetes installation..."
 
+# Wait for unattended-upgr to complete (can hold dpkg lock)
+echo "Waiting for unattended-upgr and apt processes to complete..."
+max_wait=300  # 5 minutes timeout
+waited=0
+while pgrep -x unattended-upgr > /dev/null 2>&1 || sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1; do
+  echo "  Waiting for dpkg lock to be released... ($waited/$max_wait seconds)"
+  if [ $waited -ge $max_wait ]; then
+    echo "  Timeout waiting for dpkg lock, continuing anyway..."
+    break
+  fi
+  sleep 5
+  waited=$((waited + 5))
+done
+
 # Update system
 sudo apt-get update
 sudo apt-get install -y apt-transport-https ca-certificates curl open-iscsi
