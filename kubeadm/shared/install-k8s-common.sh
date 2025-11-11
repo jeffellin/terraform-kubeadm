@@ -5,6 +5,11 @@
 
 set -e
 
+# Set environment variables to prevent interactive prompts
+export DEBIAN_FRONTEND=noninteractive
+export NEEDRESTART_MODE=a
+export UCF_FORCE_CONFMISS=1
+
 echo "Starting Kubernetes installation..."
 
 # Disable unattended-upgr to prevent dpkg lock conflicts
@@ -24,8 +29,8 @@ for i in {1..30}; do
 done
 
 # Update system
-sudo apt-get update
-sudo apt-get install -y apt-transport-https ca-certificates curl open-iscsi
+sudo -E apt-get update
+sudo -E apt-get install -y apt-transport-https ca-certificates curl open-iscsi
 
 # Enable and start open-iscsi (required for Longhorn)
 sudo systemctl enable iscsid
@@ -33,7 +38,7 @@ sudo systemctl start iscsid
 
 # Install Docker
 curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
+sudo -E sh get-docker.sh
 sudo usermod -aG docker ubuntu
 sudo systemctl enable docker
 sudo systemctl start docker
@@ -50,8 +55,8 @@ sudo systemctl enable containerd
 sudo mkdir -p /etc/apt/keyrings
 curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
-sudo apt-get update
-sudo apt-get install -y kubelet kubeadm kubectl
+sudo -E apt-get update
+sudo -E apt-get install -y kubelet kubeadm kubectl
 sudo apt-mark hold kubelet kubeadm kubectl
 
 # Enable kubelet
