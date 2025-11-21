@@ -33,6 +33,13 @@ kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/
 echo "Waiting for Calico pods to be ready..."
 kubectl wait --for=condition=ready pod -l k8s-app=calico-node -n kube-system --timeout=300s || true
 
+# Create ConfigMap with cluster information
+echo "Creating cluster ConfigMap..."
+kubectl create configmap cluster-config \
+  --from-literal=cluster-name=${CLUSTER_NAME} \
+  --from-literal=master-ip=${MASTER_IP} \
+  -n kube-system
+
 # Generate join command and save it
 sudo kubeadm token create --print-join-command > /tmp/join-command
 sudo chmod 644 /tmp/join-command
