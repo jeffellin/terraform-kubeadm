@@ -3,14 +3,6 @@ hostname: ${hostname}
 fqdn: ${hostname}
 manage_etc_hosts: true
 package_upgrade: false
-
-# Disable unattended-upgrades before any packages are installed
-bootcmd:
-  - systemctl disable unattended-upgrades 2>/dev/null || true
-  - systemctl mask unattended-upgrades 2>/dev/null || true
-  - systemctl mask apt-daily.service 2>/dev/null || true
-  - systemctl mask apt-daily-upgrade.service 2>/dev/null || true
-
 packages:
   - qemu-guest-agent
 ssh_pwauth: true
@@ -30,6 +22,7 @@ write_files:
 runcmd:
   - systemctl enable qemu-guest-agent
   - systemctl start qemu-guest-agent
+  - echo "=== Cloud-init Configuration ===" && echo "GitHub Branch: ${branch}" && echo "Master IP: ${master_ip}" && echo "=============================="
   - DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a curl -fsSL https://raw.githubusercontent.com/jeffellin/terraform-kubeadm/${branch}/kubeadm/shared/install-k8s-common.sh | bash
   - sleep 300
   - DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a curl -fsSL https://raw.githubusercontent.com/jeffellin/terraform-kubeadm/${branch}/kubeadm/shared/join-k8s-worker.sh | bash -s -- ${master_ip}

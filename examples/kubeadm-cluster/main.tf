@@ -34,6 +34,7 @@ module "kubeadm_cluster" {
   worker_ip_start    = var.worker_ip_start
   gateway_ip         = var.gateway_ip
   cluster_name       = var.cluster_name
+  github_branch      = var.github_branch
 
   # Resource sizing (optional)
   master_cpu_cores = var.master_cpu_cores

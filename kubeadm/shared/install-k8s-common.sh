@@ -12,27 +12,29 @@ export UCF_FORCE_CONFMISS=1
 
 echo "Starting Kubernetes installation..."
 
-# unattended-upgrades is already disabled via cloud-init bootcmd
-# Just verify it's not running and wait for any initial apt/dpkg to finish
-echo "Verifying unattended-upgrades is disabled..."
-sudo systemctl is-enabled unattended-upgrades 2>/dev/null && {
-  echo "Disabling unattended-upgrades..."
-  sudo systemctl disable unattended-upgrades 2>/dev/null || true
-} || echo "unattended-upgrades already disabled"
+# Disable unattended-upgrades to prevent dpkg lock conflicts during installation
+echo "Disabling unattended-upgrades service..."
+sudo systemctl stop unattended-upgrades 2>/dev/null || true
+sudo systemctl disable unattended-upgrades 2>/dev/null || true
+sudo systemctl mask unattended-upgrades 2>/dev/null || true
+sudo systemctl mask apt-daily.service 2>/dev/null || true
+sudo systemctl mask apt-daily-upgrade.service 2>/dev/null || true
 
 # Wait for any remaining apt/dpkg processes to finish
 echo "Waiting for dpkg lock to be free..."
-for i in {1..30}; do
+for i in {1..60}; do
   if ! lsof /var/lib/apt/lists/lock >/dev/null 2>&1 && ! lsof /var/lib/dpkg/lock* >/dev/null 2>&1; then
     echo "dpkg lock is free"
     break
   fi
-  echo "  Attempt $i/30: dpkg still locked..."
+  if [ $((i % 10)) -eq 0 ]; then
+    echo "  Attempt $i/60: Still waiting..."
+  fi
   sleep 1
 done
 
 # Give the system a moment to settle
-sleep 1
+sleep 2
 
 # Update system
 sudo -E apt-get update
