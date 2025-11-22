@@ -80,15 +80,66 @@ kubectl get pods -n longhorn-system -w
 
 ### 2. MetalLB - Load Balancer
 
-MetalLB provides LoadBalancer services for bare metal clusters.
+MetalLB provides LoadBalancer services for bare metal clusters. It uses an IP address range configured in the `aws-credentials` file.
+
+#### Configure IP Address Pool
+
+Before installing MetalLB, set the IP address pool in your configuration:
+
+```bash
+# Copy the example credentials file (if not already done)
+cp infra/secrets/aws-credentials.example infra/secrets/aws-credentials
+
+# Edit and set the METALLB_IP_RANGE variable
+vi infra/secrets/aws-credentials
+```
+
+**Default pool:** `192.168.1.220-192.168.1.225` (6 IPs)
+
+**Example for different network:**
+```bash
+# In infra/secrets/aws-credentials:
+METALLB_IP_RANGE=10.0.0.240-10.0.0.245
+```
+
+**Important:**
+- Ensure the IP range has available IPs on your cluster network
+- Don't use IPs already assigned to nodes or other services
+- If you used a custom network during cluster creation, adjust the range accordingly
+
+#### Install MetalLB
+
+The install script automatically sources the `aws-credentials` file and uses the configured `METALLB_IP_RANGE`:
 
 ```bash
 ./infra/metallb/install.sh
 ```
 
+The script will:
+1. Load the IP range from `aws-credentials`
+2. Install MetalLB components
+3. Create an IPAddressPool with your configured range
+4. Create L2Advertisement for load balancing
+
 **Verify:**
 ```bash
+# Check pods are running
 kubectl get pods -n metallb-system
+
+# Verify IP address pool is configured
+kubectl get ipaddresspool -n metallb-system
+
+# Verify L2 advertisement is configured
+kubectl get l2advertisement -n metallb-system
+
+# Check the configured IP range
+kubectl get ipaddresspool -n metallb-system default-pool -o jsonpath='{.spec.addresses}'
+```
+
+**Alternative: Override via environment variable:**
+```bash
+# Use a different IP range without modifying aws-credentials
+METALLB_IP_RANGE=10.0.0.240-10.0.0.245 ./infra/metallb/install.sh
 ```
 
 ---
