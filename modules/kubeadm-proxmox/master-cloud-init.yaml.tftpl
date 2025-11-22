@@ -19,11 +19,9 @@ write_files:
     permissions: '0600'
     content: |
       ${indent(6, cluster_ssh_private_key)}
-
 runcmd:
   - systemctl enable qemu-guest-agent
   - systemctl start qemu-guest-agent
-  - echo "=== Cloud-init Configuration ===" && echo "GitHub Branch: ${branch}" && echo "Master IP: ${master_ip}" && echo "Cluster Name: ${cluster_name}" && echo "=============================="
   - DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a curl -fsSL https://raw.githubusercontent.com/jeffellin/terraform-kubeadm/${branch}/kubeadm/shared/install-k8s-common.sh | bash
   - sleep 60
   - DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a curl -fsSL https://raw.githubusercontent.com/jeffellin/terraform-kubeadm/${branch}/kubeadm/shared/init-k8s-master.sh | sudo bash -s -- ${master_ip} ${cluster_name}

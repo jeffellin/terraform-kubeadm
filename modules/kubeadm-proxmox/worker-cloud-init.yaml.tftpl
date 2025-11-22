@@ -22,7 +22,6 @@ write_files:
 runcmd:
   - systemctl enable qemu-guest-agent
   - systemctl start qemu-guest-agent
-  - echo "=== Cloud-init Configuration ===" && echo "GitHub Branch: ${branch}" && echo "Master IP: ${master_ip}" && echo "=============================="
   - DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a curl -fsSL https://raw.githubusercontent.com/jeffellin/terraform-kubeadm/${branch}/kubeadm/shared/install-k8s-common.sh | bash
   - sleep 300
-  - DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a curl -fsSL https://raw.githubusercontent.com/jeffellin/terraform-kubeadm/${branch}/kubeadm/shared/join-k8s-worker.sh | bash -s -- ${master_ip}
+  # - DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a curl -fsSL https://raw.githubusercontent.com/jeffellin/terraform-kubeadm/${branch}/kubeadm/shared/join-k8s-worker.sh | bash -s -- ${master_ip}
