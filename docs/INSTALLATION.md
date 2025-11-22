@@ -144,7 +144,41 @@ METALLB_IP_RANGE=10.0.0.240-10.0.0.245 ./infra/metallb/install.sh
 
 ---
 
-### 3. Contour - Ingress Controller
+### 3. AWS Secrets - Credentials for AWS Services
+
+Create secrets required by cert-manager and external-dns. First, configure your AWS credentials:
+
+```bash
+# Edit aws-credentials (already copied in step 2 for MetalLB)
+# Add your AWS access key and Route53 zone ID
+vi infra/secrets/aws-credentials
+```
+
+**Required fields:**
+```bash
+AWS_ACCESS_KEY_ID=your-access-key-id
+AWS_SECRET_ACCESS_KEY=your-secret-access-key
+AWS_REGION=us-east-1
+R53_ZONE=Z123456789ABC
+CERT_EMAIL=your-email@example.com
+```
+
+Then create the secrets and configmap:
+
+```bash
+./infra/secrets/create-aws-secret.sh
+```
+
+**Verify:**
+```bash
+kubectl get secret aws-credentials -n cert-manager
+kubectl get secret aws-credentials -n external-dns
+kubectl get configmap external-dns-config -n external-dns
+```
+
+---
+
+### 4. Contour - Ingress Controller
 
 Contour provides ingress capabilities and depends on MetalLB for its LoadBalancer service.
 
@@ -160,7 +194,7 @@ kubectl get svc -n projectcontour envoy
 
 ---
 
-### 4. Secrets Namespace
+### 5. Secrets Namespace
 
 Create the shared secrets namespace used by SecretGen for password generation.
 
@@ -175,7 +209,7 @@ kubectl get namespace secrets
 
 ---
 
-### 5. SecretGen - Secret Generation Controller
+### 6. SecretGen - Secret Generation Controller
 
 SecretGen controller helps manage secret generation.
 
@@ -186,30 +220,6 @@ kubectl apply -f infra/secretgen/secretgen-controller-app.yaml
 **Verify:**
 ```bash
 kubectl get pods -n secretgen-controller
-```
-
----
-
-### 6. AWS Secrets - Credentials for AWS Services
-
-Create secrets required by cert-manager and external-dns. First, configure your credentials:
-
-```bash
-cp infra/secrets/aws-credentials.example infra/secrets/aws-credentials
-# Edit aws-credentials with your actual values
-```
-
-Then create the secrets and configmap:
-
-```bash
-./infra/secrets/create-aws-secret.sh
-```
-
-**Verify:**
-```bash
-kubectl get secret aws-credentials -n cert-manager
-kubectl get secret aws-credentials -n external-dns
-kubectl get configmap external-dns-config -n external-dns
 ```
 
 ---
@@ -1039,10 +1049,10 @@ kubectl auth can-i --list
 1. **Infrastructure provisioning** (Terraform) - Creates Kubernetes cluster
 2. **Longhorn** - Storage provider (required by MySQL, WordPress, and other apps)
 3. **MetalLB** - Load balancer (required by Contour, optional for services)
-4. **Contour** - Ingress controller (requires MetalLB)
-5. **Secrets Namespace** - Shared namespace for SecretGen-managed secrets
-6. **SecretGen** - Secret generation controller (used by MySQL)
-7. **AWS Secrets** - Credentials (required by cert-manager and external-dns)
+4. **AWS Secrets** - Credentials (required by cert-manager and external-dns)
+5. **Contour** - Ingress controller (requires MetalLB)
+6. **Secrets Namespace** - Shared namespace for SecretGen-managed secrets
+7. **SecretGen** - Secret generation controller (used by MySQL)
 8. **Cert-Manager** - TLS certificates (requires AWS secrets)
 9. **Dashboard** - Kubernetes Dashboard UI
 10. **Let's Encrypt ClusterIssuers** - Certificate issuers (requires cert-manager)
@@ -1057,10 +1067,11 @@ kubectl auth can-i --list
 - **Terraform/Proxmox** → Creates the base Kubernetes cluster
 - **Longhorn** → Must be ready before deploying apps with PVCs (MySQL, WordPress)
 - **MetalLB** → Must be ready before Contour; provides LoadBalancer IPs (pool: 192.168.1.220-225)
+- **AWS Secrets** → Must be created before cert-manager and external-dns (step 4)
 - **Contour** → Depends on MetalLB for LoadBalancer service
-- **AWS Secrets** → Must exist before cert-manager and external-dns
-- **Cert-Manager** → Required for TLS certificates via Let's Encrypt
+- **Cert-Manager** → Depends on AWS Secrets; required for TLS certificates via Let's Encrypt
 - **SecretGen** → Required for MySQL password generation in `secrets` namespace
+- **External-DNS** → Depends on AWS Secrets and cert-manager; manages DNS records in Route53
 - **MySQL** → Must be ready in `mysql` namespace before WordPress; imports secret from `secrets`
 - **WordPress** → Depends on MySQL and imports secret from `secrets` namespace
 
