@@ -3,6 +3,14 @@ hostname: ${hostname}
 fqdn: ${hostname}
 manage_etc_hosts: true
 package_upgrade: false
+
+# Disable unattended-upgrades before any packages are installed
+bootcmd:
+  - systemctl disable unattended-upgrades 2>/dev/null || true
+  - systemctl mask unattended-upgrades 2>/dev/null || true
+  - systemctl mask apt-daily.service 2>/dev/null || true
+  - systemctl mask apt-daily-upgrade.service 2>/dev/null || true
+
 packages:
   - qemu-guest-agent
 ssh_pwauth: true

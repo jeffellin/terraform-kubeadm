@@ -12,21 +12,27 @@ export UCF_FORCE_CONFMISS=1
 
 echo "Starting Kubernetes installation..."
 
-# Disable unattended-upgr to prevent dpkg lock conflicts
-echo "Stopping unattended-upgr service..."
-sudo systemctl stop unattended-upgrades 2>/dev/null || true
-sudo systemctl disable unattended-upgrades 2>/dev/null || true
+# unattended-upgrades is already disabled via cloud-init bootcmd
+# Just verify it's not running and wait for any initial apt/dpkg to finish
+echo "Verifying unattended-upgrades is disabled..."
+sudo systemctl is-enabled unattended-upgrades 2>/dev/null && {
+  echo "Disabling unattended-upgrades..."
+  sudo systemctl disable unattended-upgrades 2>/dev/null || true
+} || echo "unattended-upgrades already disabled"
 
-# Wait for any remaining apt processes to finish
-echo "Waiting for any remaining apt/dpkg processes..."
+# Wait for any remaining apt/dpkg processes to finish
+echo "Waiting for dpkg lock to be free..."
 for i in {1..30}; do
-  if ! pgrep -x unattended-upgr >/dev/null 2>&1 && ! pgrep apt-get >/dev/null 2>&1; then
+  if ! lsof /var/lib/apt/lists/lock >/dev/null 2>&1 && ! lsof /var/lib/dpkg/lock* >/dev/null 2>&1; then
     echo "dpkg lock is free"
     break
   fi
-  echo "  Attempt $i/30: Still waiting..."
-  sleep 2
+  echo "  Attempt $i/30: dpkg still locked..."
+  sleep 1
 done
+
+# Give the system a moment to settle
+sleep 1
 
 # Update system
 sudo -E apt-get update
@@ -53,10 +59,23 @@ sudo systemctl enable containerd
 
 # Install Kubernetes components using new repository
 sudo mkdir -p /etc/apt/keyrings
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key | sudo gpg --batch --no-default-keyring --keyring /etc/apt/keyrings/kubernetes-apt-keyring.gpg --dearmor
 echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
-sudo -E apt-get update
-sudo -E apt-get install -y kubelet kubeadm kubectl
+
+# Retry apt-get update and install with exponential backoff
+echo "Installing Kubernetes components..."
+for attempt in {1..3}; do
+  echo "  Attempt $attempt/3..."
+  if sudo -E apt-get update && sudo -E apt-get install -y kubelet kubeadm kubectl; then
+    echo "Kubernetes components installed successfully"
+    break
+  fi
+  if [ $attempt -lt 3 ]; then
+    echo "  Installation failed, waiting 10 seconds before retry..."
+    sleep 10
+  fi
+done
+
 sudo apt-mark hold kubelet kubeadm kubectl
 
 # Enable kubelet
