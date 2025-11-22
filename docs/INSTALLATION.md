@@ -23,7 +23,7 @@ The Kubernetes cluster is created using Terraform on Proxmox with cloud-init aut
 **To deploy the cluster:**
 
 ```bash
-cd kubeadm/proxmox
+cd examples/kubeadm-cluster
 
 # Copy and configure variables
 cp terraform.tfvars.example terraform.tfvars
@@ -38,15 +38,15 @@ terraform apply
 **To retrieve kubeconfig:**
 
 ```bash
-# From the kubeadm directory
+# Using the provided script (from examples/kubeadm-cluster directory)
 ./get-kubeconfig.sh
 
-# Or SSH to master and copy
+# Or manually SSH to master and copy
 ssh ubuntu@192.168.1.200
 cat ~/.kube/config
 ```
 
-See [kubeadm/README.md](kubeadm/README.md) for detailed Terraform configuration options.
+See the [Getting Started Guide](GETTING_STARTED.md) and [Module Setup Guide](terraform/MODULE_SETUP.md) for detailed Terraform configuration options.
 
 ---
 
