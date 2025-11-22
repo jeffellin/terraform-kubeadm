@@ -63,6 +63,49 @@ After the Kubernetes cluster is running, install infrastructure components in th
 
 ## Installation Order
 
+### 0. Configuration - AWS Credentials and MetalLB IP Range
+
+Before installing any infrastructure components, configure the `aws-credentials` file with your AWS details and MetalLB IP range. This configuration is sourced by multiple installation scripts.
+
+```bash
+# Copy the example credentials file
+cp infra/secrets/aws-credentials.example infra/secrets/aws-credentials
+
+# Edit with your actual values
+vi infra/secrets/aws-credentials
+```
+
+**Required fields to configure:**
+
+```bash
+# AWS Credentials for Route53 (used by cert-manager and external-dns)
+AWS_ACCESS_KEY_ID=your-access-key-id
+AWS_SECRET_ACCESS_KEY=your-secret-access-key
+AWS_REGION=us-east-1
+R53_ZONE=Z123456789ABC
+
+# MetalLB IP Address Pool (used by metallb/install.sh)
+# Must be available IPs on your cluster network
+METALLB_IP_RANGE=192.168.1.220-192.168.1.225
+
+# Optional: Email for Let's Encrypt certificate notifications
+CERT_EMAIL=your-email@example.com
+```
+
+**For different networks:**
+```bash
+# Example: Using 10.0.0.0/24 network
+METALLB_IP_RANGE=10.0.0.240-10.0.0.245
+AWS_REGION=us-west-2
+```
+
+**Important:**
+- MetalLB IP range must have available IPs on your cluster network
+- Don't use IPs already assigned to nodes or other services
+- This file is sourced by `metallb/install.sh`, so it must exist before running it
+
+---
+
 ### 1. Longhorn - Storage Provider
 
 Longhorn provides persistent storage via PVCs. Install this first as applications depend on it.
@@ -80,43 +123,14 @@ kubectl get pods -n longhorn-system -w
 
 ### 2. MetalLB - Load Balancer
 
-MetalLB provides LoadBalancer services for bare metal clusters. It uses an IP address range configured in the `aws-credentials` file.
-
-#### Configure IP Address Pool
-
-Before installing MetalLB, set the IP address pool in your configuration:
-
-```bash
-# Copy the example credentials file (if not already done)
-cp infra/secrets/aws-credentials.example infra/secrets/aws-credentials
-
-# Edit and set the METALLB_IP_RANGE variable
-vi infra/secrets/aws-credentials
-```
-
-**Default pool:** `192.168.1.220-192.168.1.225` (6 IPs)
-
-**Example for different network:**
-```bash
-# In infra/secrets/aws-credentials:
-METALLB_IP_RANGE=10.0.0.240-10.0.0.245
-```
-
-**Important:**
-- Ensure the IP range has available IPs on your cluster network
-- Don't use IPs already assigned to nodes or other services
-- If you used a custom network during cluster creation, adjust the range accordingly
-
-#### Install MetalLB
-
-The install script automatically sources the `aws-credentials` file and uses the configured `METALLB_IP_RANGE`:
+MetalLB provides LoadBalancer services for bare metal clusters. It automatically sources the `METALLB_IP_RANGE` from the `aws-credentials` file configured in step 0.
 
 ```bash
 ./infra/metallb/install.sh
 ```
 
 The script will:
-1. Load the IP range from `aws-credentials`
+1. Load the IP range from `aws-credentials` (configured in step 0)
 2. Install MetalLB components
 3. Create an IPAddressPool with your configured range
 4. Create L2Advertisement for load balancing
@@ -146,24 +160,7 @@ METALLB_IP_RANGE=10.0.0.240-10.0.0.245 ./infra/metallb/install.sh
 
 ### 3. AWS Secrets - Credentials for AWS Services
 
-Create secrets required by cert-manager and external-dns. First, configure your AWS credentials:
-
-```bash
-# Edit aws-credentials (already copied in step 2 for MetalLB)
-# Add your AWS access key and Route53 zone ID
-vi infra/secrets/aws-credentials
-```
-
-**Required fields:**
-```bash
-AWS_ACCESS_KEY_ID=your-access-key-id
-AWS_SECRET_ACCESS_KEY=your-secret-access-key
-AWS_REGION=us-east-1
-R53_ZONE=Z123456789ABC
-CERT_EMAIL=your-email@example.com
-```
-
-Then create the secrets and configmap:
+Create secrets required by cert-manager and external-dns. Uses the AWS credentials configured in step 0:
 
 ```bash
 ./infra/secrets/create-aws-secret.sh
@@ -1046,10 +1043,11 @@ kubectl auth can-i --list
 
 ### Complete Installation Order
 
+0. **Configuration** - Set up aws-credentials file (MUST be done first)
 1. **Infrastructure provisioning** (Terraform) - Creates Kubernetes cluster
 2. **Longhorn** - Storage provider (required by MySQL, WordPress, and other apps)
-3. **MetalLB** - Load balancer (required by Contour, optional for services)
-4. **AWS Secrets** - Credentials (required by cert-manager and external-dns)
+3. **MetalLB** - Load balancer (sources METALLB_IP_RANGE from aws-credentials)
+4. **AWS Secrets** - Create Kubernetes secrets from aws-credentials file
 5. **Contour** - Ingress controller (requires MetalLB)
 6. **Secrets Namespace** - Shared namespace for SecretGen-managed secrets
 7. **SecretGen** - Secret generation controller (used by MySQL)
@@ -1061,18 +1059,20 @@ kubectl auth can-i --list
 13. **WordPress** - Application (requires MySQL and Longhorn)
 14. **API** - WordPress Stats API (optional, requires MySQL)
 15. **RBAC** - Access controls (optional)
+16. **Client Certificates** - User authentication (optional)
 
 ### Key Dependencies
 
+- **Configuration (Step 0)** → Must be done first; creates aws-credentials file with all settings
 - **Terraform/Proxmox** → Creates the base Kubernetes cluster
 - **Longhorn** → Must be ready before deploying apps with PVCs (MySQL, WordPress)
-- **MetalLB** → Must be ready before Contour; provides LoadBalancer IPs (pool: 192.168.1.220-225)
-- **AWS Secrets** → Must be created before cert-manager and external-dns (step 4)
+- **MetalLB** → Depends on Configuration (step 0) for METALLB_IP_RANGE; must be ready before Contour
+- **AWS Secrets** → Depends on Configuration (step 0); must be created before cert-manager and external-dns
 - **Contour** → Depends on MetalLB for LoadBalancer service
-- **Cert-Manager** → Depends on AWS Secrets; required for TLS certificates via Let's Encrypt
+- **Cert-Manager** → Depends on AWS Secrets for Route53 credentials; required for TLS certificates
 - **SecretGen** → Required for MySQL password generation in `secrets` namespace
 - **External-DNS** → Depends on AWS Secrets and cert-manager; manages DNS records in Route53
-- **MySQL** → Must be ready in `mysql` namespace before WordPress; imports secret from `secrets`
+- **MySQL** → Must be ready before WordPress; imports secret from `secrets` namespace
 - **WordPress** → Depends on MySQL and imports secret from `secrets` namespace
 
 ### Network Configuration
