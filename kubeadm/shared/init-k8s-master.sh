@@ -26,7 +26,7 @@ sudo cp -i /etc/kubernetes/admin.conf /home/ubuntu/.kube/config
 sudo chown ubuntu:ubuntu /home/ubuntu/.kube/config
 
 # Install Calico CNI
-export KUBECONFIG=/etc/kubernetes/admin.conf
+export KUBECONFIG=/home/ubuntu/.kube/config
 kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/calico.yaml
 
 # Wait for Calico to be ready
