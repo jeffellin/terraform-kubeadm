@@ -35,10 +35,10 @@ kubectl wait --for=condition=ready pod -l k8s-app=calico-node -n kube-system --t
 
 # Create ConfigMap with cluster information
 echo "Creating cluster ConfigMap..."
-kubectl create configmap cluster-config \
-  --from-literal=cluster-name=${CLUSTER_NAME} \
-  --from-literal=master-ip=${MASTER_IP} \
-  -n kube-system
+kubectl create configmap cluster-config --from-literal=cluster-name=${CLUSTER_NAME} --from-literal=master-ip=${MASTER_IP} -n kube-system || {
+  echo "Warning: Failed to create cluster ConfigMap. This may be non-critical."
+  true
+}
 
 # Generate join command and save it
 sudo kubeadm token create --print-join-command > /tmp/join-command
