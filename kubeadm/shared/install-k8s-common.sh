@@ -20,6 +20,10 @@ sudo systemctl mask unattended-upgrades 2>/dev/null || true
 sudo systemctl mask apt-daily.service 2>/dev/null || true
 sudo systemctl mask apt-daily-upgrade.service 2>/dev/null || true
 
+# Kill any remaining unattended-upgrade processes
+sudo pkill -9 unattended-upgr 2>/dev/null || true
+sudo pkill -9 apt 2>/dev/null || true
+
 # Wait for any remaining apt/dpkg processes to finish
 echo "Waiting for dpkg lock to be free..."
 for i in {1..60}; do
