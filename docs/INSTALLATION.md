@@ -2,6 +2,12 @@
 
 This guide covers the complete installation process from infrastructure provisioning to application deployment.
 
+**Quick Navigation:**
+- [Getting Started](GETTING_STARTED.md) - Quick 5-minute setup
+- [Main Documentation](../README.md) - Project overview
+- [Infrastructure Overview](infrastructure/OVERVIEW.md) - All components explained
+- [Security & RBAC](security/RBAC_GUIDE.md) - Access control setup
+
 ## Infrastructure Setup
 
 ### Step 0: Provision Kubernetes Cluster with Terraform

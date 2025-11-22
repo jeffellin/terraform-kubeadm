@@ -229,3 +229,11 @@ See `variables.tf` for all available options. Key customizable parameters:
    # View cluster info
    kubectl cluster-info
    ```
+
+## Related Documentation
+
+- [Module Setup Guide](MODULE_SETUP.md) - Understanding the module structure
+- [Worker IP Calculation](WORKER_IP_CALCULATION.md) - How IP assignment works
+- [Getting Started](../GETTING_STARTED.md) - Quick start guide
+- [Full Installation Guide](../INSTALLATION.md) - Complete infrastructure setup
+- [Back to Docs Index](../../README.md) - Main documentation

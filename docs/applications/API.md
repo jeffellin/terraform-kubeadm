@@ -138,3 +138,9 @@ curl http://localhost:8080/api/userinfo?user=admin
 - Only published posts are counted
 - Results are sorted by post count (descending)
 - Returns empty string for `last_post_title` if user has no posts
+
+## Related Documentation
+
+- [Installation Guide](../INSTALLATION.md) - Deploy the API with full cluster setup
+- [Infrastructure Overview](../infrastructure/OVERVIEW.md) - Infrastructure components
+- [Back to Main Docs](../../README.md) - Main documentation

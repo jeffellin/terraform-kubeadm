@@ -210,3 +210,9 @@ rm -f custom-values.yaml
 3. **Separation of Duties**: Deployer and viewer roles are separate
 4. **Token Rotation**: Service account tokens should be rotated periodically
 5. **Audit**: Monitor usage of these service accounts in audit logs
+
+## Related Documentation
+
+- [Client Certificate Authentication](CLIENT_CERTS.md) - User identity with certificates
+- [Installation Guide](../INSTALLATION.md) - Full cluster setup including RBAC
+- [Back to Main Docs](../../README.md) - Main documentation

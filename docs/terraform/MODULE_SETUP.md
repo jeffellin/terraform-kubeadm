@@ -211,5 +211,6 @@ terraform apply -var="worker_count=2"
 4. Access cluster via SSH keys from `modules/kubeadm-proxmox/cluster-ssh-key`
 
 For detailed documentation, see:
-- [Module README](modules/kubeadm-proxmox/README.md)
-- [Example README](examples/kubeadm-cluster/README.md)
+- [Module README](../../modules/kubeadm-proxmox/README.md) - Technical module documentation
+- [Examples](EXAMPLES.md) - Practical usage patterns
+- [Back to Docs Index](../README.md) - Full documentation overview

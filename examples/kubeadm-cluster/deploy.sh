@@ -37,8 +37,8 @@ fi
 
 # Retrieve SSH public key from 1Password
 echo "📦 Retrieving SSH public key from 1Password vault: $VAULT_NAME"
-SSH_PUBLIC_KEY=$(op item get "$KEY_NAME" --vault "$VAULT_NAME" --fields label=public_key 2>/dev/null || \
-                 op item get "$KEY_NAME" --vault "$VAULT_NAME" --field 'public_key' 2>/dev/null || \
+SSH_PUBLIC_KEY=$(op item get "$KEY_NAME" --vault "$VAULT_NAME" --field 'public key' 2>/dev/null || \
+                 op read "op://$VAULT_NAME/$KEY_NAME/public key" 2>/dev/null || \
                  op read "op://$VAULT_NAME/$KEY_NAME/public_key" 2>/dev/null)
 
 if [ -z "$SSH_PUBLIC_KEY" ]; then

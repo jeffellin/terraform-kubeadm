@@ -138,9 +138,15 @@ terraform-kubeadm/
 │
 ├── kubeadm/proxmox/                  ← Original (still works)
 │
-├── MODULE_SETUP.md                   ← Detailed guide
-├── MODULES_DIAGRAM.txt               ← Visual diagram
-└── QUICK_START.md                    ← This file
+├── docs/                              ← Documentation (updated!)
+│   ├── GETTING_STARTED.md             ← This file
+│   ├── INSTALLATION.md
+│   ├── terraform/
+│   │   ├── MODULE_SETUP.md
+│   │   ├── WORKER_IP_CALCULATION.md
+│   │   └── EXAMPLES.md
+│   └── ...
+└── QUICK_START.md                    ← Old file (see docs/GETTING_STARTED.md)
 ```
 
 ## Common Tasks
@@ -196,10 +202,11 @@ ssh -i modules/kubeadm-proxmox/cluster-ssh-key ubuntu@192.168.1.200
 
 ## Documentation
 
-- **[Module README](modules/kubeadm-proxmox/README.md)** - Full module documentation
-- **[Module Setup Guide](MODULE_SETUP.md)** - Detailed explanation
-- **[Example README](examples/kubeadm-cluster/README.md)** - Example usage patterns
-- **[Module Diagram](MODULES_DIAGRAM.txt)** - Visual overview
+- **[Module Setup Guide](terraform/MODULE_SETUP.md)** - Detailed module explanation
+- **[Worker IP Calculation](terraform/WORKER_IP_CALCULATION.md)** - IP assignment details
+- **[Examples](terraform/EXAMPLES.md)** - Practical usage patterns
+- **[Full Installation Guide](INSTALLATION.md)** - Complete infrastructure setup
+- **[Module README](../../modules/kubeadm-proxmox/README.md)** - Technical module documentation
 
 ## Next Steps
 
@@ -211,8 +218,9 @@ ssh -i modules/kubeadm-proxmox/cluster-ssh-key ubuntu@192.168.1.200
 ## Support
 
 For more details:
-- Module documentation: See `modules/kubeadm-proxmox/README.md`
-- Example patterns: See `examples/kubeadm-cluster/README.md`
-- Architecture: See `MODULES_DIAGRAM.txt`
+- **Module Setup**: See [Module Setup Guide](terraform/MODULE_SETUP.md)
+- **Example Patterns**: See [Examples](terraform/EXAMPLES.md)
+- **Full Infrastructure**: See [Installation Guide](INSTALLATION.md)
+- **Back to Main Docs**: See [Documentation Index](../README.md)
 
 Happy clustering! 🚀

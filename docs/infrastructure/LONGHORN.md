@@ -52,3 +52,9 @@ Then open http://localhost:8080
 ```bash
 kubectl patch storageclass longhorn -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
 ```
+
+## Related Documentation
+
+- [Infrastructure Overview](OVERVIEW.md) - All infrastructure components
+- [Installation Guide](../INSTALLATION.md) - Full cluster setup
+- [Back to Main Docs](../../README.md) - Main documentation
