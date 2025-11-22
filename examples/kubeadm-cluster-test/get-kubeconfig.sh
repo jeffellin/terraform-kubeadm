@@ -1,15 +1,11 @@
 #!/bin/bash
 
 # Fetch kubeconfig from master node using terraform outputs
-# Usage: ./get-kubeconfig.sh [environment] [output-file]
+# Usage: ./get-kubeconfig.sh [output-file]
 
 set -e
 
-ENVIRONMENT=${1:-"proxmox"}
-OUTPUT_FILE=${2:-"./kubeconfig"}
-
-# Change to environment directory
-cd "${ENVIRONMENT}"
+OUTPUT_FILE=${1:-"./kubeconfig"}
 
 # Get master IP from terraform output
 echo "Getting master IP from terraform outputs..."
@@ -22,9 +18,6 @@ if [[ -z "$MASTER_IP" ]]; then
 fi
 
 echo "Fetching kubeconfig from master node at ${MASTER_IP}..."
-
-# Return to kubeadm directory
-cd ..
 
 # Fetch the kubeconfig file from master
 ssh -o StrictHostKeyChecking=no ubuntu@${MASTER_IP} "sudo cat /etc/kubernetes/admin.conf" > ${OUTPUT_FILE}

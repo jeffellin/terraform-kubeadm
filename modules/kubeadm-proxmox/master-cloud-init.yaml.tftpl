@@ -9,7 +9,9 @@ ssh_pwauth: true
 chpasswd:
   expire: false
 ssh_authorized_keys:
+%{ if ssh_public_key != "" ~}
   - ${ssh_public_key}
+%{ endif ~}
   - ${cluster_ssh_key}
 write_files:
   - path: /home/ubuntu/.ssh/id_ed25519
@@ -17,9 +19,10 @@ write_files:
     permissions: '0600'
     content: |
       ${indent(6, cluster_ssh_private_key)}
+
 runcmd:
   - systemctl enable qemu-guest-agent
   - systemctl start qemu-guest-agent
-  - DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a curl -fsSL https://raw.githubusercontent.com/jeffellin/terraform-kubeadm/main/kubeadm/shared/install-k8s-common.sh | bash
-  - sleep 300
-  - DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a curl -fsSL https://raw.githubusercontent.com/jeffellin/terraform-kubeadm/main/kubeadm/shared/join-k8s-worker.sh | bash -s -- 192.168.1.200
+  - DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a curl -fsSL https://raw.githubusercontent.com/jeffellin/terraform-kubeadm/${branch}/kubeadm/shared/install-k8s-common.sh | bash
+  - sleep 60
+  - DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a curl -fsSL https://raw.githubusercontent.com/jeffellin/terraform-kubeadm/${branch}/kubeadm/shared/init-k8s-master.sh | sudo bash -s -- ${master_ip} ${cluster_name}

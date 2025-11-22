@@ -1,0 +1,35 @@
+# Proxmox Connection Settings (REQUIRED)
+proxmox_host     = "https://your-proxmox-host:8006/api2/json"
+proxmox_username = "root@pam"
+proxmox_password = "your-proxmox-password"  # Consider using environment variables or a secrets file
+proxmox_node     = "pve"
+
+# Storage Settings (REQUIRED)
+storage_pool   = "local-lvm"
+network_bridge = "vmbr0"
+
+# VM Credentials (OPTIONAL - defaults provided)
+vm_password   = "Passw0rd"
+ssh_public_key = ""  # Leave empty to skip SSH key setup, or paste your public key
+
+# Ubuntu Template Settings (OPTIONAL - defaults provided)
+ubuntu_iso_path = "local:iso/ubuntu-24.04-live-server-amd64.iso"
+template_id     = 9000
+template_name   = "ubuntu-24.04-cloud-init"
+
+# Cluster Configuration (OPTIONAL)
+master_vm_id     = 200                # Proxmox VM ID for master node
+master_ip        = "192.168.1.200"    # Master node IP address
+worker_count     = 3                  # Number of worker nodes
+worker_ip_prefix = "192.168.1"        # IP prefix for worker nodes
+worker_ip_start  = -1                 # Worker starting IP octet (-1 = auto-calculate after master)
+gateway_ip       = "192.168.1.1"      # Network gateway IP
+cluster_name     = "k8s-cluster"       # Kubernetes cluster name
+github_branch    = "main"              # GitHub branch for init scripts (e.g., main, develop, feature-branch)
+
+# Resource Sizing (OPTIONAL)
+master_cpu_cores    = 2
+master_memory_mb    = 4096
+worker_cpu_cores    = 2
+worker_memory_mb    = 8192
+worker_disk_size_gb = 50
