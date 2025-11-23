@@ -31,13 +31,11 @@ fetch_kubeconfig() {
     # Get the full path
     local FULL_PATH=$(cd "$(dirname "${OUTPUT_FILE}")" && pwd)/$(basename "${OUTPUT_FILE}")
 
-    # Export KUBECONFIG for use in the calling shell
-    export KUBECONFIG="${FULL_PATH}"
-
     echo "Kubeconfig saved to: ${FULL_PATH}"
     echo ""
-    echo "KUBECONFIG environment variable set to: ${FULL_PATH}"
-    echo "You can now use: kubectl get nodes"
+    echo "To use this kubeconfig:"
+    echo "  export KUBECONFIG=${FULL_PATH}"
+    echo "  kubectl get nodes"
     echo ""
     echo "Or merge with existing config:"
     echo "  KUBECONFIG=~/.kube/config:${FULL_PATH} kubectl config view --flatten > ~/.kube/config.new"
