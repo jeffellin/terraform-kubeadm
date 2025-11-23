@@ -1,0 +1,31 @@
+# Ansible Inventory for Kubernetes Cluster
+#
+# Copy this file to inventory.ini and update with your actual node IPs
+# Usage:
+#   ansible-playbook -i operations/inventory.ini operations/updates/rolling-update.yml
+#
+# Get node IPs from your cluster:
+#   kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.addresses[?(@.type=="ExternalIP")].address}{"\n"}{end}'
+
+[masters]
+k8s-cluster-master ansible_host=192.168.1.211 ansible_user=ubuntu
+
+[workers]
+k8s-cluster-worker-0 ansible_host=192.168.1.212 ansible_user=ubuntu
+k8s-cluster-worker-1 ansible_host=192.168.1.213 ansible_user=ubuntu
+k8s-cluster-worker-2 ansible_host=192.168.1.214 ansible_user=ubuntu
+
+# Common variables for all hosts
+[all:vars]
+# SSH key for authentication
+ansible_ssh_private_key_file=~/.ssh/id_ed25519
+
+# Become method for privilege escalation
+ansible_become_method=sudo
+ansible_become_user=root
+
+# SSH connection settings
+ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+
+# Python interpreter on target (Ubuntu 24.04)
+ansible_python_interpreter=/usr/bin/python3

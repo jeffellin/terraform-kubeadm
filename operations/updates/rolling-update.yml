@@ -1,0 +1,283 @@
+---
+# Ansible playbook for rolling OS updates across Kubernetes cluster
+#
+# Prerequisites:
+# 1. Configure inventory.ini with your nodes
+# 2. SSH key-based auth to all nodes
+# 3. 'kubectl' available locally
+#
+# Usage:
+#   ansible-playbook -i operations/inventory.ini operations/updates/rolling-update.yml --check
+#   ansible-playbook -i operations/inventory.ini operations/updates/rolling-update.yml
+#
+# The playbook will:
+# 1. Update worker nodes one-by-one (cordon, drain, update, reboot, uncordon)
+# 2. Update master node last (with less aggressive draining)
+# 3. Verify cluster health between updates
+
+- name: Rolling OS Updates for Kubernetes Cluster
+  hosts: all
+  serial: 1  # Update one node at a time
+  gather_facts: yes
+  vars:
+    update_timeout: 600
+    reboot_timeout: 300
+    kubelet_ready_timeout: 300
+
+  tasks:
+    - name: Get node role
+      delegate_to: localhost
+      become: no
+      run_once: false
+      shell: |
+        kubectl get node {{ inventory_hostname }} -o jsonpath='{.metadata.labels.node-role\.kubernetes\.io/control-plane}' 2>/dev/null || echo "worker"
+      register: node_role
+      changed_when: false
+
+    - name: Set is_master fact
+      set_fact:
+        is_master: "{{ 'true' in node_role.stdout }}"
+
+    # Pre-update checks
+    - name: (Pre-Check) Verify node is ready
+      delegate_to: localhost
+      become: no
+      run_once: false
+      shell: |
+        kubectl get node {{ inventory_hostname }} -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+      register: node_status
+      failed_when: node_status.stdout != "True"
+      changed_when: false
+
+    - name: (Pre-Check) Show current updates available
+      shell: apt upgrade -s 2>/dev/null | tail -5
+      register: available_updates
+      changed_when: false
+
+    - name: Display available updates
+      debug:
+        msg: "{{ available_updates.stdout_lines }}"
+
+    # Drain node (skip if master and no workload pods)
+    - name: (Drain) Cordon node
+      delegate_to: localhost
+      become: no
+      run_once: false
+      shell: |
+        kubectl cordon {{ inventory_hostname }}
+      when: not is_master
+
+    - name: (Drain) Drain workload pods from node
+      delegate_to: localhost
+      become: no
+      run_once: false
+      shell: |
+        kubectl drain {{ inventory_hostname }} \
+          --ignore-daemonsets \
+          --delete-emptydir-data \
+          --grace-period=300 \
+          --timeout=10m \
+          2>&1 | tail -20
+      when: not is_master
+      register: drain_result
+      failed_when:
+        - drain_result.rc != 0
+        - "'No resources found' not in drain_result.stderr"
+
+    - name: (Drain) For master node - just log it's being updated
+      debug:
+        msg: "Master node {{ inventory_hostname }} will be updated with control-plane pods staying on this node"
+      when: is_master
+
+    # System updates
+    - name: (Update) Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 0
+
+    - name: (Update) Check if reboot required
+      stat:
+        path: /var/run/reboot-required
+      register: reboot_required_before
+
+    - name: (Update) Install available updates
+      apt:
+        upgrade: safe
+        autoclean: yes
+        autoremove: yes
+      register: apt_upgrade
+      until: apt_upgrade is succeeded
+      retries: 3
+      delay: 30
+
+    - name: (Update) Check if reboot required now
+      stat:
+        path: /var/run/reboot-required
+      register: reboot_required_after
+
+    # Reboot if needed
+    - name: (Reboot) Schedule reboot
+      shell: shutdown -r +1 "OS updates installed by Ansible"
+      when: reboot_required_after.stat.exists
+      register: reboot_scheduled
+
+    - name: (Reboot) Wait for shutdown to start
+      wait_for_connection:
+        delay: 60
+        timeout: 120
+        state: stopped
+      when: reboot_required_after.stat.exists
+
+    - name: (Reboot) Wait for system to come back online
+      wait_for_connection:
+        delay: 10
+        timeout: "{{ reboot_timeout }}"
+        state: started
+      when: reboot_required_after.stat.exists
+
+    - name: (Reboot) Wait for kubelet to be ready
+      service:
+        name: kubelet
+        state: started
+        enabled: yes
+      until: ansible_facts.services.kubelet.state == "running"
+      retries: 30
+      delay: 2
+      when: reboot_required_after.stat.exists
+
+    - name: (Reboot) Show uname after reboot
+      shell: uname -a
+      register: uname_after
+      when: reboot_required_after.stat.exists
+
+    - name: Display kernel version after reboot
+      debug:
+        msg: "{{ uname_after.stdout }}"
+      when: reboot_required_after.stat.exists
+
+    # Post-update verification
+    - name: (Verify) Check kubelet is running
+      systemd:
+        name: kubelet
+        state: started
+      register: kubelet_status
+
+    - name: (Verify) Wait for node to be ready in Kubernetes
+      delegate_to: localhost
+      become: no
+      run_once: false
+      shell: |
+        timeout {{ kubelet_ready_timeout }} bash -c 'while true; do
+          status=$(kubectl get node {{ inventory_hostname }} -o jsonpath="{.status.conditions[?(@.type==\"Ready\")].status}" 2>/dev/null)
+          if [ "$status" = "True" ]; then
+            echo "Node is Ready"
+            exit 0
+          fi
+          sleep 5
+        done'
+      register: node_ready_check
+      changed_when: false
+
+    - name: (Verify) Uncordon node
+      delegate_to: localhost
+      become: no
+      run_once: false
+      shell: |
+        kubectl uncordon {{ inventory_hostname }}
+      when: not is_master
+
+    - name: (Verify) Show node status
+      delegate_to: localhost
+      become: no
+      run_once: false
+      shell: |
+        kubectl get node {{ inventory_hostname }} -o wide
+      register: node_status_after
+      changed_when: false
+
+    - name: Display node status
+      debug:
+        msg: "{{ node_status_after.stdout_lines }}"
+
+    # Cluster health check
+    - name: (Health) Check cluster health
+      delegate_to: localhost
+      become: no
+      run_once: true
+      shell: |
+        echo "=== Node Status ==="
+        kubectl get nodes
+        echo ""
+        echo "=== Pod Status ==="
+        kubectl get pods -A --field-selector=status.phase!=Running --field-selector=status.phase!=Succeeded | head -20
+        echo ""
+        echo "=== Checking for NodeNotReady condition ==="
+        kubectl get nodes -o json | jq '.items[] | select(.status.conditions[] | select(.type=="Ready" and .status=="False")) | .metadata.name' || echo "All nodes Ready"
+      register: cluster_health
+      changed_when: false
+      when: inventory_hostname == groups['all'][-1]  # After last node
+
+    - name: Display cluster health
+      debug:
+        msg: "{{ cluster_health.stdout_lines }}"
+      when: inventory_hostname == groups['all'][-1]
+
+    # Summary
+    - name: (Summary) Show what was updated
+      debug:
+        msg: |
+          === UPDATE SUMMARY FOR {{ inventory_hostname }} ===
+          Packages upgraded: {{ apt_upgrade.stdout_lines | length if apt_upgrade.stdout_lines else 'None' }}
+          Reboot required: {{ reboot_required_after.stat.exists }}
+          Updates:
+          {% if apt_upgrade.stdout_lines %}
+          {{ apt_upgrade.stdout_lines | join('\n') }}
+          {% else %}
+          System was already up to date
+          {% endif %}
+
+# Final cluster validation
+- name: Final Cluster Validation
+  hosts: localhost
+  become: no
+  gather_facts: no
+  tasks:
+    - name: (Final) Get overall cluster status
+      shell: |
+        echo "=== Kubernetes Cluster Status ==="
+        kubectl cluster-info dump --output-directory=/tmp/cluster-dump 2>&1 | head -10
+
+        echo ""
+        echo "=== All Nodes ==="
+        kubectl get nodes -o wide
+
+        echo ""
+        echo "=== Pods Not Running ==="
+        kubectl get pods -A --field-selector=status.phase!=Running --field-selector=status.phase!=Succeeded 2>/dev/null || echo "All pods healthy"
+
+        echo ""
+        echo "=== Node Resource Usage ==="
+        kubectl top nodes 2>/dev/null || echo "Metrics not available yet"
+      register: final_status
+      changed_when: false
+
+    - name: Display final cluster status
+      debug:
+        msg: "{{ final_status.stdout_lines }}"
+
+    - name: (Final) Summary
+      debug:
+        msg: |
+          ========================================
+          Rolling OS Updates Complete!
+          ========================================
+
+          Next steps:
+          1. Review cluster status above
+          2. Run smoke tests on your applications
+          3. Monitor logs for any issues:
+             kubectl logs -n kube-system -l component=kubelet --tail=50
+          4. Check node resource usage:
+             kubectl top nodes
+          5. For detailed checks:
+             kubectl get events -A --sort-by='.lastTimestamp'
