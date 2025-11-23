@@ -80,7 +80,7 @@ spec:
             - --source=service
             - --provider=aws
             - --registry=txt
-            - --txt-owner-id=external-dns
+            - --txt-owner-id=${CLUSTER_NAME}
             # zone ID from credentials file
             - --zone-id-filter=${R53_ZONE}
           env:
