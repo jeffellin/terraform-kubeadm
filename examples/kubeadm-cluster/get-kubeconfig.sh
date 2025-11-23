@@ -26,12 +26,15 @@ ssh -o StrictHostKeyChecking=no ubuntu@${MASTER_IP} "sudo cat /etc/kubernetes/ad
 sed -i.bak "s|server: https://.*:6443|server: https://${MASTER_IP}:6443|g" ${OUTPUT_FILE}
 rm -f ${OUTPUT_FILE}.bak
 
-echo "Kubeconfig saved to: ${OUTPUT_FILE}"
+# Get the full path
+FULL_PATH=$(cd "$(dirname "${OUTPUT_FILE}")" && pwd)/$(basename "${OUTPUT_FILE}")
+
+echo "Kubeconfig saved to: ${FULL_PATH}"
 echo ""
 echo "To use this kubeconfig:"
-echo "  export KUBECONFIG=${OUTPUT_FILE}"
+echo "  export KUBECONFIG=${FULL_PATH}"
 echo "  kubectl get nodes"
 echo ""
 echo "Or merge with existing config:"
-echo "  KUBECONFIG=~/.kube/config:${OUTPUT_FILE} kubectl config view --flatten > ~/.kube/config.new"
+echo "  KUBECONFIG=~/.kube/config:${FULL_PATH} kubectl config view --flatten > ~/.kube/config.new"
 echo "  mv ~/.kube/config.new ~/.kube/config"
