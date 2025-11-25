@@ -25,6 +25,12 @@ if [ -z "$R53_ZONE" ]; then
   exit 1
 fi
 
+
+if [ -z "$CLUSTER_NAME" ]; then
+  echo "Error: CLUSTER_NAME must be set in $CREDENTIALS_FILE"
+  exit 1
+fi
+
 # Create namespaces if they don't exist
 echo "Ensuring namespaces exist..."
 kubectl create namespace cert-manager --dry-run=client -o yaml | kubectl apply -f -
@@ -47,6 +53,7 @@ kubectl create secret generic aws-credentials \
 echo "Creating external-dns-config configmap..."
 kubectl create configmap external-dns-config \
   --from-literal=zone-id="$R53_ZONE" \
+  --from-literal=external-dns-txt-id="$CLUSTER_NAME" \
   --namespace=external-dns \
   --dry-run=client -o yaml | kubectl apply -f -
 
