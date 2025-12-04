@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: httpbin
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    # If you're using a different issuer, change the annotation above
+    # For example: cert-manager.io/issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - httpbin.ellin.net
+    secretName: httpbin-tls
+  rules:
+  - host: httpbin.ellin.net
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: httpbin
+            port:
+              number: 80
