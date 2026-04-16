@@ -16,21 +16,35 @@ echo "Starting Kubernetes installation..."
 echo "Stopping unattended-upgr service..."
 sudo systemctl stop unattended-upgrades 2>/dev/null || true
 sudo systemctl disable unattended-upgrades 2>/dev/null || true
+sudo pkill -9 unattended-upgr 2>/dev/null || true
 
-# Wait for any remaining apt processes to finish
-echo "Waiting for any remaining apt/dpkg processes..."
-for i in {1..30}; do
-  if ! pgrep -x unattended-upgr >/dev/null 2>&1 && ! pgrep apt-get >/dev/null 2>&1; then
+# Wait for the actual dpkg frontend lock to be released
+echo "Waiting for dpkg lock to be free..."
+for i in {1..60}; do
+  if sudo flock -n /var/lib/dpkg/lock-frontend -c true 2>/dev/null; then
     echo "dpkg lock is free"
     break
   fi
-  echo "  Attempt $i/30: Still waiting..."
-  sleep 2
+  echo "  Attempt $i/60: dpkg lock still held, waiting..."
+  sleep 5
 done
+
+apt_install() {
+  local attempt
+  for attempt in {1..5}; do
+    if sudo -E apt-get install -y "$@"; then
+      return 0
+    fi
+    echo "  apt-get install attempt $attempt failed, retrying in 10s..."
+    sleep 10
+  done
+  echo "ERROR: apt-get install failed after 5 attempts: $*" >&2
+  return 1
+}
 
 # Update system
 sudo -E apt-get update
-sudo -E apt-get install -y apt-transport-https ca-certificates curl open-iscsi
+apt_install apt-transport-https ca-certificates curl open-iscsi
 
 # Enable and start open-iscsi (required for Longhorn)
 sudo systemctl enable iscsid
@@ -53,10 +67,10 @@ sudo systemctl enable containerd
 
 # Install Kubernetes components using new repository
 sudo mkdir -p /etc/apt/keyrings
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key | sudo gpg --batch --no-tty --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
 sudo -E apt-get update
-sudo -E apt-get install -y kubelet kubeadm kubectl
+apt_install kubelet kubeadm kubectl
 sudo apt-mark hold kubelet kubeadm kubectl
 
 # Enable kubelet
